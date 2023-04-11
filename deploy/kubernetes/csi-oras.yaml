@@ -1,0 +1,376 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: csi.oras.land
+spec:
+  attachRequired: true
+  podInfoOnMount: false
+---
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: oras-storage
+  namespace: kube-system
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: csi.oras.land
+allowVolumeExpansion: true
+---
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-oras-controller-sa
+  namespace: kube-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-oras-node-sa
+  namespace: kube-system
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-provisioner-role
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-provisioner-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-oras-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-oras-provisioner-role
+  apiGroup: rbac.authorization.k8s.io
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-attacher-role
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments/status"]
+    verbs: ["patch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-attacher-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-oras-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-oras-attacher-role
+  apiGroup: rbac.authorization.k8s.io
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-resizer-role
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims/status"]
+    verbs: ["update", "patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-resizer-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-oras-controller-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-oras-resizer-role
+  apiGroup: rbac.authorization.k8s.io
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-driver-registrar-node-role
+rules:
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-driver-registrar-node-binding
+subjects:
+  - kind: ServiceAccount
+    name: csi-oras-node-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-oras-driver-registrar-node-role
+  apiGroup: rbac.authorization.k8s.io
+---
+
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: csi-oras-controller
+  namespace: kube-system
+spec:
+  serviceName: csi-oras
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csi-oras-controller
+      role: csi-oras
+  template:
+    metadata:
+      labels:
+        app: csi-oras-controller
+        role: csi-oras
+    spec:
+      priorityClassName: system-cluster-critical
+      serviceAccount: csi-oras-controller-sa
+      hostNetwork: true
+      containers:
+        # provisioner
+        - name: csi-provisioner
+          image: quay.io/k8scsi/csi-provisioner:v1.4.0
+          args:
+            - "--csi-address=$(ADDRESS)"
+            - "--v=5"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "Always"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        # attacher
+        - name: csi-attacher
+          image: quay.io/k8scsi/csi-attacher:v3.1.0
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "Always"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        # resizer
+        - name: csi-resizer
+          image: quay.io/k8scsi/csi-resizer:v0.5.0
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+          env:
+            - name: ADDRESS
+              value: /var/lib/csi/sockets/pluginproxy/csi.sock
+          imagePullPolicy: "Always"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+        # ORAS CSI Plugin
+        - name: csi-oras-plugin
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          image: ghcr.io/converged-computing/oras-csi-plugin:latest
+          args:
+            - "--mode=controller"
+            - "--csi-endpoint=$(CSI_ENDPOINT)"
+            - "--container=$(CONTAINER_URI)"
+            - "--root-dir=$(ROOT_DIR)"
+            - "--plugin-data-dir=$(WORKING_DIR)"
+            - "--mfs-logging=$(MFS_LOGGING)"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
+            - name: CONTAINER_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: csi-oras-config
+                  key: container_uri
+            - name: ROOT_DIR
+              valueFrom:
+                configMapKeyRef:
+                  name: csi-oras-config
+                  key: k8s_root_dir
+            - name: WORKING_DIR
+              valueFrom:
+                configMapKeyRef:
+                  name: csi-oras-config
+                  key: driver_working_dir
+            - name: MFS_LOGGING
+              valueFrom:
+                configMapKeyRef:
+                  name: csi-oras-config
+                  key: mfs_logging
+          imagePullPolicy: "Always"
+          volumeMounts:
+            - name: socket-dir
+              mountPath: /var/lib/csi/sockets/pluginproxy/
+      volumes:
+        - name: socket-dir
+          emptyDir: {}
+---
+kind: DaemonSet
+apiVersion: apps/v1
+metadata:
+  name: csi-oras-node
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: csi-oras-node
+  template:
+    metadata:
+      labels:
+        app: csi-oras-node
+        role: csi-oras
+    spec:
+      priorityClassName: system-node-critical
+      serviceAccount: csi-oras-node-sa
+      hostNetwork: true
+      containers:
+        # registrar
+        - name: driver-registrar
+          image: quay.io/k8scsi/csi-node-driver-registrar:v1.1.0
+          args:
+            - "--v=5"
+            - "--csi-address=$(ADDRESS)"
+            - "--kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)"
+          env:
+            - name: ADDRESS
+              value: /csi/csi.sock
+            - name: DRIVER_REG_SOCK_PATH
+              value: /var/lib/kubelet/plugins/csi.oras.land/csi.sock
+            - name: KUBE_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi/
+            - name: registration-dir
+              mountPath: /registration/
+        # ORAS CSI Plugin
+        - name: csi-oras-plugin
+          securityContext:
+            privileged: true
+            capabilities:
+              add: ["SYS_ADMIN"]
+            allowPrivilegeEscalation: true
+          image: ghcr.io/converged-computing/oras-csi-plugin:latest
+          args:
+            - "--mode=node"
+            - "--csi-endpoint=$(CSI_ENDPOINT)"
+            - "--container=$(CONTAINER_URI)"
+            - "--node-id=$(NODE_ID)"
+            - "--root-dir=$(ROOT_DIR)"
+            - "--plugin-data-dir=$(WORKING_DIR)"
+            - "--mount-points-count=$(MOUNT_COUNT)"
+            - "--oras-logging=$(ORAS_LOGGING)"
+          env:
+            - name: CSI_ENDPOINT
+              value: unix:///csi/csi.sock
+            - name: CONTAINER_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: csi-oras-config
+                  key: container_uri
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: ROOT_DIR
+              valueFrom:
+                configMapKeyRef:
+                  name: csi-oras-config
+                  key: k8s_root_dir
+            - name: WORKING_DIR
+              valueFrom:
+                configMapKeyRef:
+                  name: csi-oras-config
+                  key: driver_working_dir
+            - name: MOUNT_COUNT
+              valueFrom:
+                configMapKeyRef:
+                  name: csi-oras-config
+                  key: mount_count
+            - name: ORAS_LOGGING
+              valueFrom:
+                configMapKeyRef:
+                  name: csi-oras-config
+                  key: oras_logging
+          imagePullPolicy: "Always"
+          volumeMounts:
+            - name: plugin-dir
+              mountPath: /csi
+            - name: pods-mount-dir
+              mountPath: /var/lib/kubelet
+              mountPropagation: "Bidirectional"
+            - mountPath: /dev
+              name: device-dir
+      volumes:
+        - name: registration-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins_registry/
+            type: Directory
+        - name: plugin-dir
+          hostPath:
+            path: /var/lib/kubelet/plugins/csi.oras.land
+            type: DirectoryOrCreate
+        - name: pods-mount-dir
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+        - name: device-dir
+          hostPath:
+            path: /dev
