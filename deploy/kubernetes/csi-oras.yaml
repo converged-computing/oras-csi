@@ -228,7 +228,7 @@ spec:
             - "--container=$(CONTAINER_URI)"
             - "--root-dir=$(ROOT_DIR)"
             - "--plugin-data-dir=$(WORKING_DIR)"
-            - "--mfs-logging=$(MFS_LOGGING)"
+            - "--oras-logging=$(ORAS_LOGGING)"
           env:
             - name: CSI_ENDPOINT
               value: unix:///var/lib/csi/sockets/pluginproxy/csi.sock
@@ -247,11 +247,11 @@ spec:
                 configMapKeyRef:
                   name: csi-oras-config
                   key: driver_working_dir
-            - name: MFS_LOGGING
+            - name: ORAS_LOGGING
               valueFrom:
                 configMapKeyRef:
                   name: csi-oras-config
-                  key: mfs_logging
+                  key: oras_logging
           imagePullPolicy: "Always"
           volumeMounts:
             - name: socket-dir

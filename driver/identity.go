@@ -23,6 +23,7 @@ func (is *IdentityService) GetPluginInfo(ctx context.Context, req *csi.GetPlugin
 	}, nil
 }
 
+// GetPluginCapabilities returns the message that this provides a controller service, and does not provide volume expansion
 func (is *IdentityService) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	log.Infof("GetPluginCapabilities")
 
@@ -35,10 +36,12 @@ func (is *IdentityService) GetPluginCapabilities(ctx context.Context, req *csi.G
 					},
 				},
 			},
+
+			// Volumes cannot be expanded
 			{
 				Type: &csi.PluginCapability_VolumeExpansion_{
 					VolumeExpansion: &csi.PluginCapability_VolumeExpansion{
-						Type: csi.PluginCapability_VolumeExpansion_ONLINE,
+						Type: csi.PluginCapability_VolumeExpansion_OFFLINE,
 					},
 				},
 			},
@@ -46,6 +49,7 @@ func (is *IdentityService) GetPluginCapabilities(ctx context.Context, req *csi.G
 	}, nil
 }
 
+// Probe indicates that the plugin is in a healthy state
 func (is *IdentityService) Probe(ctx context.Context, req *csi.ProbeRequest) (*csi.ProbeResponse, error) {
 	log.Infof("Probe")
 

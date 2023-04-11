@@ -6,10 +6,6 @@ RUN apt update && \
     # security updates
     apt install -y apt systemd
 
-# Add key
-RUN wget -O - http://repository.moosefs.com/moosefs.key | apt-key add -
-RUN echo "deb http://repository.moosefs.com/4.44.4/apt/debian/buster buster main" > /etc/apt/sources.list.d/moosefs.list
-
 # Install oras
 # ENV ORAS_VERSION="1.0.0"
 # RUN curl -LO "https://github.com/oras-project/oras/releases/download/v${VERSION}/oras_${VERSION}_linux_amd64.tar.gz" && \

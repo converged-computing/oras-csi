@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	driverName    = "csi.moosefs.com"
-	driverVersion = "0.9.4"
+	driverName    = "csi.oras.land"
+	driverVersion = "0.1.0"
 )
 
 type Service interface{}

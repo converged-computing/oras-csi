@@ -22,14 +22,10 @@ var (
 		csi.VolumeCapability_AccessMode_MULTI_NODE_SINGLE_WRITER,
 		csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 	}
-	moosefsVolumeCapability = &csi.VolumeCapability_MountVolume{
-		FsType: "moosefs",
-	}
 )
 
 var controllerCapabilities = []csi.ControllerServiceCapability_RPC_Type{
 	csi.ControllerServiceCapability_RPC_CREATE_DELETE_VOLUME,
-	csi.ControllerServiceCapability_RPC_EXPAND_VOLUME,
 	csi.ControllerServiceCapability_RPC_PUBLISH_UNPUBLISH_VOLUME,
 	//	csi.ControllerServiceCapability_RPC_PUBLISH_READONLY,
 }
@@ -86,50 +82,22 @@ func (cs *ControllerService) CreateVolume(ctx context.Context, req *csi.CreateVo
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-	var acquiredSize int64
 	if exists {
-		currQuota, err := cs.ctlMount.GetQuota(volumeId)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		if currQuota != requestedQuota {
-			return nil, status.Errorf(codes.AlreadyExists, "CreateVolume: volume %s already exists and has different capacity from requested (current %d, requested %d)",
-				volumeId, currQuota, requestedQuota)
-		}
+		return nil, status.Errorf(codes.AlreadyExists, "CreateVolume: volume %s already exists", volumeId)
+
 	} else {
-		acquiredSize, err = cs.ctlMount.CreateVolume(volumeId, requestedQuota)
+		err = cs.ctlMount.CreateVolume(volumeId, requestedQuota)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
-		}
-		if acquiredSize != requestedQuota {
-			log.Warningf("CreateVolume - requested %d bytes, got %d", requestedQuota, acquiredSize)
 		}
 	}
 	if len(req.Parameters) != 0 {
 		return nil, status.Errorf(codes.Internal, "CreateVolume: Plugin parameters are not supported")
 	}
-	/*
-		volumeContext := req.GetParameters()
-		if volumeContext == nil {
-			volumeContext = make(map[string]string)
-		}
-		mfsVolumePath := cs.ctlMount.MfsPathToVolume(volumeId)
-		volumeContext["mfsVolumePath"] = mfsVolumePath
-
-		resp := &csi.CreateVolumeResponse{
-			Volume: &csi.Volume{
-				VolumeId:      req.GetName(),
-				CapacityBytes: acquiredSize,
-				VolumeContext: volumeContext,
-			},
-		}
-		return resp, nil
-
-	*/
 	resp := &csi.CreateVolumeResponse{
 		Volume: &csi.Volume{
 			VolumeId:      req.GetName(),
-			CapacityBytes: acquiredSize,
+			CapacityBytes: requestedQuota,
 		},
 	}
 	return resp, nil
@@ -153,39 +121,6 @@ func (cs *ControllerService) DeleteVolume(ctx context.Context, req *csi.DeleteVo
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &csi.DeleteVolumeResponse{}, nil
-}
-
-func (cs *ControllerService) ControllerExpandVolume(ctx context.Context, req *csi.ControllerExpandVolumeRequest) (*csi.ControllerExpandVolumeResponse, error) {
-	if req.VolumeId == "" {
-		return nil, status.Error(codes.InvalidArgument, "ControllerExpandVolume: VolumeId must be provided")
-	}
-	size, err := getRequestCapacity(req.CapacityRange)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	log.Infof("ControllerExpandVolume - VolumeId: %s, size: %d)", req.VolumeId, size)
-
-	exists, err := cs.ctlMount.VolumeExist(req.VolumeId)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-	if !exists {
-		return nil, status.Error(codes.NotFound, err.Error())
-	}
-
-	acquiredSize, err := cs.ctlMount.SetQuota(req.VolumeId, size)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	if acquiredSize != size {
-		log.Warningf("ControllerExpandVolume - requested %d bytes, got %d", size, acquiredSize)
-	}
-
-	return &csi.ControllerExpandVolumeResponse{
-		CapacityBytes:         acquiredSize,
-		NodeExpansionRequired: false,
-	}, nil
 }
 
 func (cs *ControllerService) ValidateVolumeCapabilities(ctx context.Context, req *csi.ValidateVolumeCapabilitiesRequest) (*csi.ValidateVolumeCapabilitiesResponse, error) {
@@ -291,7 +226,7 @@ func (cs *ControllerService) ControllerPublishVolume(ctx context.Context, req *c
 	}
 
 	if do_create {
-		if _, err := cs.ctlMount.CreateVolume(req.VolumeId, 0); err != nil {
+		if err := cs.ctlMount.CreateVolume(req.VolumeId, 0); err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 		return &csi.ControllerPublishVolumeResponse{PublishContext: publishContext}, nil
@@ -335,23 +270,3 @@ func getRequestCapacity(capRange *csi.CapacityRange) (int64, error) {
 	}
 	return capacity, nil
 }
-
-//////////
-/*
-func (cs *ControllerService) ListVolumes(ctx context.Context, req *csi.ListVolumesRequest) (*csi.ListVolumesResponse, error) {
-	log.Infof("ControllerService::ListVolumes")
-	return nil, status.Errorf(codes.Unimplemented, "method ListVolumes not implemented")
-}
-
-func (cs *ControllerService) CreateSnapshot(ctx context.Context, req *csi.CreateSnapshotRequest) (*csi.CreateSnapshotResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateSnapshot not implemented")
-}
-
-func (cs *ControllerService) DeleteSnapshot(ctx context.Context, req *csi.DeleteSnapshotRequest) (*csi.DeleteSnapshotResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DeleteSnapshot not implemented")
-}
-
-func (cs *ControllerService) ListSnapshots(ctx context.Context, req *csi.ListSnapshotsRequest) (*csi.ListSnapshotsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ListSnapshots not implemented")
-}
-*/

@@ -62,13 +62,21 @@ func (ns *NodeService) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 		return nil, status.Error(codes.InvalidArgument, "NodePublishVolume: VolumeCapability must be provided")
 	}
 
+	log.Info("Looking for volume context....")
+	volumeContext := req.GetVolumeContext()
+	log.Info(volumeContext)
+
 	var source string
-	if subDir, found := req.GetVolumeContext()["mfsSubDir"]; found {
+	if subDir, found := volumeContext["mfsSubDir"]; found {
 		source = subDir
 	} else {
-		source = ns.mountPoints[0].MfsPathToVolume(req.VolumeId)
+		source = ns.mountPoints[0].OrasPathToVolume(req.VolumeId)
 	}
+	log.Info("volume source directory:", source)
+
 	target := req.TargetPath
+	log.Info("volume target directory:", target)
+
 	options := req.VolumeCapability.GetMount().MountFlags
 	if req.GetReadonly() {
 		options = append(options, "ro")
@@ -134,38 +142,10 @@ func (ns *NodeService) NodeGetCapabilities(ctx context.Context, req *csi.NodeGet
 	}, nil
 }
 
-/*
-func (ns *NodeService) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
-	log.Infof("NodeService::NodeGetVolumeStats (volume_id %s, volume_path %s, staging_path %s)",
-		req.VolumeId, req.VolumePath, req.StagingTargetPath)
-
-	if req.VolumeId == "" {
-		return nil, status.Error(codes.InvalidArgument, "NodeGetVolumeStats: VolumeId must be provided")
-	}
-	if req.VolumePath == "" {
-		return nil, status.Error(codes.InvalidArgument, "NodeGetVolumeStats: VolumePath must be provided")
-	}
-
-	cond := false
-	_, err := ioutil.ReadDir(req.VolumePath)
-	if err != nil {
-		log.Infof("%s %s corrupted", req.VolumeId, req.VolumePath)
-		cond = true
-	} else {
-		log.Infof("%s %s NOT corrupted", req.VolumeId, req.VolumePath)
-	}
-	return &csi.NodeGetVolumeStatsResponse{VolumeCondition: &csi.VolumeCondition{
-		Abnormal: cond,
-		Message:  "",
-	}}, nil
-}
-*/
-//////////////
-
 // pickHandler - Returns proper handler. Currently picks random mfs handler.
 func (ns *NodeService) pickHandler(volumeContext map[string]string, publishContext map[string]string) (*orasHandler, error) {
 	if ns.mountPointsCount <= 0 {
-		return nil, status.Error(codes.Internal, "pickHandler: there is no mfs handlers")
+		return nil, status.Error(codes.Internal, "pickHandler: there are no handlers")
 	}
 	return ns.mountPoints[rand.Uint32()%uint32(ns.mountPointsCount)], nil
 }

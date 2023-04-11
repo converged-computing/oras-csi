@@ -1,41 +1,38 @@
 package driver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
-	"strconv"
 	"strings"
+
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/registry/remote"
 
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 const (
-	fsType         = "moosefs"
 	newVolumeMode  = 0755
-	getQuotaCmd    = "mfsgetquota"
-	setQuotaCmd    = "mfssetquota"
-	quotaLimitType = "-L"
-	quotaLimitRow  = 2
-
-	quotaLimitCol = 3
-
-	logsDirName = "logs"
-	//	volumesDirName = "volumes"
-
-	mntDir = "/mnt"
+	logsDirName    = "logs"
+	volumesDirName = "volumes"
+	mntDir         = "/mnt"
 )
 
 // todo(ad): in future possibly add more options (mount options?)
 type orasHandler struct {
 	container      string // oras artifact (container) to provide
-	rootPath       string // mfs root path
+	tag            string // oras artifact tag
+	artifactRoot   string // path to artifact pull directory
+	rootPath       string // oras root path
 	pluginDataPath string // plugin data path (inside rootPath)
 	name           string // handler name
-	hostMountPath  string // host mfs mount path
+	hostMountPath  string // host mount path
 }
 
 // NewOrasHandler creates a new oras handles to mount a container URI, pulled once
@@ -51,8 +48,26 @@ func NewOrasHandler(container string, rootPath, pluginDataPath, name string, num
 		log.Errorf("NewOrasHandler - Unexpected number of arguments: %d; expected 0 or 2", len(num))
 	}
 
+	// Get rid of oras prefix, if provided
+	container = strings.TrimPrefix(container, "oras://")
+	tag := "latest"
+	if strings.Contains(container, ":") {
+		parts := strings.Split(container, ":")
+		container = parts[0]
+		tag = parts[1]
+	}
+
+	log.Infof("Found ORAS container: %s:%s", container, tag)
+
+	// Prepare a directory just for the artifact
+	// TODO need to be able to name this predictably!
+	artifact := strings.ReplaceAll(strings.ReplaceAll(container, "/", "-"), ".", "-")
+	artifactRoot := path.Join(rootPath, pluginDataPath, artifact+"-"+tag)
+
 	return &orasHandler{
 		container:      container,
+		artifactRoot:   artifactRoot,
+		tag:            tag,
 		rootPath:       rootPath,
 		pluginDataPath: pluginDataPath,
 		name:           name,
@@ -107,19 +122,10 @@ func (mnt *orasHandler) CreateMountVolume(volumeId string) error {
 	return nil
 }
 
-func (mnt *orasHandler) CreateVolume(volumeId string, size int64) (int64, error) {
+func (mnt *orasHandler) CreateVolume(volumeId string, size int64) error {
 	path := mnt.HostPathToVolume(volumeId)
-	if err := os.MkdirAll(path, newVolumeMode); err != nil {
-		return 0, err
-	}
-	if size == 0 {
-		return 0, nil
-	}
-	acquiredSize, err := mnt.SetQuota(volumeId, size)
-	if err != nil {
-		return 0, err
-	}
-	return acquiredSize, nil
+	err := os.MkdirAll(path, newVolumeMode)
+	return err
 }
 
 func (mnt *orasHandler) DeleteVolume(volumeId string) error {
@@ -134,69 +140,46 @@ func (mnt *orasHandler) DeleteVolume(volumeId string) error {
 	return nil
 }
 
-func (mnt *orasHandler) GetQuota(volumeId string) (int64, error) {
-	log.Infof("GetQuota - volumeId: %s", volumeId)
+// Ensure the artifact (and pull contents there)
+func (mnt *orasHandler) ensureArtifact() error {
 
-	path := mnt.MfsPathToVolume(volumeId)
+	if _, err := os.Stat(mnt.artifactRoot); errors.Is(err, os.ErrNotExist) {
 
-	cmd := exec.Command(getQuotaCmd, path)
-	cmd.Dir = mnt.hostMountPath
-	out, err := cmd.CombinedOutput()
-
-	if err != nil {
-		return 0, fmt.Errorf("GetQuota: Error while executing command %s %s. Error: %s output: %v", getQuotaCmd, path, err.Error(), string(out))
+		// Pull Oras Container, if doesn't exist
+		if err := mnt.OrasPull(); err != nil {
+			return err
+		}
 	}
-	if quotaLimit, err := parseMfsQuotaToolsOutput(string(out)); err != nil {
-		return 0, err
-	} else if quotaLimit == -1 {
-		return 0, fmt.Errorf("GetQuota: Quota for volume %s is not set or %s output is incorrect. Output: %s", volumeId, getQuotaCmd, string(out))
-	} else {
-		return quotaLimit, nil
-	}
+	return nil
 }
 
-func (mnt *orasHandler) SetQuota(volumeId string, size int64) (int64, error) {
-	log.Infof("SetQuota - volumeId: %s, size: %d", volumeId, size)
+// Pull the oras container to the plugin data directory
+func (mnt *orasHandler) OrasPull() error {
 
-	path := mnt.MfsPathToVolume(volumeId)
-	if size <= 0 {
-		return 0, errors.New("SetQuota: size must be positive")
-	}
-	setQuotaArgs := []string{quotaLimitType, strconv.FormatInt(size, 10), path}
-	cmd := exec.Command(setQuotaCmd, setQuotaArgs...)
-	cmd.Dir = mnt.hostMountPath
-	out, err := cmd.CombinedOutput()
-
+	// 0. Create a file store
+	log.Info("Creating oras filestore at: ", mnt.artifactRoot)
+	fs, err := file.New(mnt.artifactRoot)
 	if err != nil {
-		return 0, fmt.Errorf("SetQuota: Error while executing command %s %v. Error: %s output: %v", setQuotaCmd, setQuotaArgs, err.Error(), string(out))
+		return err
 	}
-	if quotaLimit, err := parseMfsQuotaToolsOutput(string(out)); err != nil {
-		return 0, err
-	} else if quotaLimit == -1 {
-		return 0, fmt.Errorf("SetQuota: Quota for volume %s is not set or %s output is incorrect. Output: %s", volumeId, setQuotaCmd, string(out))
-	} else {
-		return quotaLimit, nil
-	}
-}
+	defer fs.Close()
 
-func parseMfsQuotaToolsOutput(output string) (int64, error) {
-	lines := strings.Split(output, "\n")
-	if len(lines) <= quotaLimitRow {
-		return 0, fmt.Errorf("Error while parsing quota tool output (less rows than expected); output: %s", output)
-	}
-	cols := strings.Split(lines[quotaLimitRow], "|")
-	if len(cols) < 5 {
-		return 0, fmt.Errorf("Error while parsing quota tool output (less columns than expected); output: %s", output)
-	}
-	s := strings.TrimSpace(cols[quotaLimitCol])
-	if s == "-" {
-		return -1, nil // let caller take care of error. May be useful for mount volumes
-	}
-	quotaLimit, err := strconv.ParseInt(s, 10, 64)
+	// 1. Connect to a remote repository
+	log.Info("Preparing to pull from remote repository: ", mnt.container)
+	ctx := context.Background()
+	repo, err := remote.NewRepository(mnt.container)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	return quotaLimit, nil
+	// If authentication needed, could be added here
+	// not recommended, make your images open source and public!
+
+	// 2. Copy from the remote repository to the file store
+	_, err = oras.Copy(ctx, repo, mnt.tag, fs, mnt.tag, oras.DefaultCopyOptions)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Mount mounts an oras container at specified point.
@@ -209,10 +192,24 @@ func (mnt *orasHandler) MountOras() error {
 	// TODO here we can pull to plugin data directory with oras and then mount single file
 	log.Infof("Oras - container: %s, target: %s, options: %v", mountSource, mnt.hostMountPath, mountOptions)
 
+	// Pull (or ensure artifact already exists)
+	err := mnt.ensureArtifact()
+	if err != nil {
+		return err
+	}
+	log.Infof("Oras artifact root: %s", mnt.artifactRoot)
+	files, err := ioutil.ReadDir(mnt.artifactRoot)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, f := range files {
+		log.Info("Found artifact asset: ", f.Name())
+	}
+
 	if isMounted, err := mounter.IsMounted(mnt.hostMountPath); err != nil {
 		return err
 	} else if isMounted {
-		log.Warnf("MountMfs - Mount found in %s. Unmounting...", mnt.hostMountPath)
+		log.Warnf("Mount found in %s. Unmounting...", mnt.hostMountPath)
 		if err = mounter.UMount(mnt.hostMountPath); err != nil {
 			return err
 		}
@@ -220,21 +217,21 @@ func (mnt *orasHandler) MountOras() error {
 	if err := os.RemoveAll(mnt.hostMountPath); err != nil {
 		return err
 	}
-	if err := mounter.Mount(mountSource, mnt.hostMountPath, fsType, mountOptions...); err != nil {
+	if err := mounter.Mount(mnt.artifactRoot, mnt.hostMountPath, "", mountOptions...); err != nil {
 		return err
 	}
-	log.Infof("MountMfs - Successfully mounted %s to %s", mountSource, mnt.hostMountPath)
+	log.Infof("Successfully mounted %s to %s", mnt.artifactRoot, mnt.hostMountPath)
 	return nil
 }
 
-func (mnt *orasHandler) BindMount(mfsSource string, target string, options ...string) error {
+func (mnt *orasHandler) BindMount(src string, target string, options ...string) error {
 	mounter := Mounter{}
-	source := mnt.HostPathTo(mfsSource)
+	source := mnt.HostPathTo(src)
 	log.Infof("BindMount - source: %s, target: %s, options: %v", source, target, options)
 	if isMounted, err := mounter.IsMounted(target); err != nil {
 		return err
 	} else if !isMounted {
-		if err := mounter.Mount(source, target, fsType, append(options, "bind")...); err != nil {
+		if err := mounter.Mount(source, target, "", append(options, "bind")...); err != nil {
 			return err
 		}
 	} else {
@@ -258,18 +255,18 @@ func (mnt *orasHandler) BindUMount(target string) error {
 	return nil
 }
 
-// HostPathToVolume returns absoluthe path to given volumeId on host mfsclient mountpoint
+// HostPathToVolume returns absoluthe path to given volumeId on host mountpoint
 func (mnt *orasHandler) HostPathToVolume(volumeId string) string {
-	return path.Join(mnt.hostMountPath, mnt.pluginDataPath, "volumes", volumeId)
+	return path.Join(mnt.hostMountPath, mnt.pluginDataPath, volumesDirName, volumeId)
 }
 
 func (mnt *orasHandler) HostPathToMountVolume(volumeId string) string {
-	return path.Join(mnt.hostMountPath, mnt.pluginDataPath, "mount_volumes", volumeId)
+	return path.Join(mnt.artifactRoot, "mount_volumes", volumeId)
 }
 
 // MfsPathToVolume
-func (mnt *orasHandler) MfsPathToVolume(volumeId string) string {
-	return path.Join(mnt.pluginDataPath, "volumes", volumeId)
+func (mnt *orasHandler) OrasPathToVolume(volumeId string) string {
+	return path.Join(mnt.hostMountPath, mnt.pluginDataPath, "mount_volumes", volumeId)
 }
 
 func (mnt *orasHandler) HostPathToLogs() string {
