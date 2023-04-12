@@ -24,10 +24,10 @@ After developing local files, we have a single command to uninstall the plugin, 
 a container, and push to a registry:
 
 ```bash
-$ make redo
+$ make dev
 ```
 
-and then install the configs in [deploy](deploy). You should inspect this logic in the [Makefile](Makefile) first.
+and then the command installs the configs in [deploy](deploy). You should inspect this logic in the [Makefile](Makefile) first.
 You can see the [deploy](#deploy) section below for how to customize these files beforehand. You can then look
 at logs for the different pods (controller and node plugin) created.
 
@@ -38,8 +38,8 @@ and push to a registry:
 
 ```bash
 $ make
-$ make build
-$ make push
+$ make build-dev
+$ make push-dev
 ```
 
 When you are ready, apply the configuration file:
@@ -63,7 +63,21 @@ Then deploy the driver plugin with the CSI sidecar containers:
 $ kubectl apply -f deploy/kubernetes/csi-oras.yaml
 ```
 
-You can see the containers (controller and node sidecars) as follows:
+And then proceed with the regular usage tutorial, next.
+
+### Local Usage
+
+If you aren't developing, you can use the container that is packaged alongside the repository.
+You simply need to install the driver!
+
+```bash
+$ make install
+```
+
+
+#### Inspect Your Driver
+
+Regardless of how you apply the configs, you can see the containers (plugins on each node) as follows:
 
 ```bash
 $ kubectl get pods -n kube-system | grep csi-oras
@@ -109,40 +123,45 @@ $ kubectl apply -f examples/kubernetes/pod/pod.yaml
 ```
 
 Note that if you check the output of the csi plugin now, it should be a lot more verbose.
+I like to keep this command running in a second terminal to watch the logs as they appear!
+
+```bash
+$ kubectl logs -n kube-system csi-oras-node-bb7mw csi-oras-plugin -f
+```
 
 <details>
 
 <summary>More verbose output</summary>
 
-```bash
-$ kubectl logs -n kube-system csi-oras-node-bb7mw csi-oras-plugin -f
-time="2023-04-12T00:17:06Z" level=info msg="Preparing artifact cache (mode: node; node-id: minikube; root-dir: /; plugin-data-dir: pv_data)"
-time="2023-04-12T00:17:06Z" level=info msg="NewNodeService creation (rootDir /, pluginDataDir pv_data, nodeId minikube, mountPointsCount 1)"
-time="2023-04-12T00:17:06Z" level=info msg="Setting up ORAS Logging. ORAS path: /pv_data/logs"
-time="2023-04-12T00:17:06Z" level=info msg="ORAS Logging set up!"
-time="2023-04-12T00:17:06Z" level=info msg="StartService - endpoint unix:///csi/csi.sock"
-time="2023-04-12T00:17:06Z" level=info msg=CreategRPCServer
-time="2023-04-12T00:17:06Z" level=info msg="CreateListener - endpoint unix:///csi/csi.sock"
-time="2023-04-12T00:17:06Z" level=info msg="CreateListener - Removing socket /csi/csi.sock"
-time="2023-04-12T00:17:06Z" level=info msg="StartService - Registering node service"
-time="2023-04-12T00:17:06Z" level=info msg="StartService - Starting to serve!"
-time="2023-04-12T00:17:07Z" level=info msg=GetPluginInfo
-time="2023-04-12T00:17:08Z" level=info msg=NodeGetInfo
-time="2023-04-12T00:17:48Z" level=info msg="NodePublishVolume - VolumeId: csi-45d1adf06887cc9b300678bc13694da1b5bc8481d2487c7895d92cd349247f57, Readonly: true, VolumeContext map[container:ghcr.io/singularityhub/github-ci:latest csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:b11f4a2e-8122-4d7d-86ab-8bc1217d839e csi.storage.k8s.io/serviceAccount.name:default], PublishContext map[], VolumeCapability mount:<> access_mode:<mode:SINGLE_NODE_WRITER >  TargetPath /var/lib/kubelet/pods/b11f4a2e-8122-4d7d-86ab-8bc1217d839e/volumes/kubernetes.io~csi/oras-inline/mount"
-time="2023-04-12T00:17:48Z" level=info msg="Looking for volume context...."
-time="2023-04-12T00:17:48Z" level=info msg="map[container:ghcr.io/singularityhub/github-ci:latest csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:b11f4a2e-8122-4d7d-86ab-8bc1217d839e csi.storage.k8s.io/serviceAccount.name:default]"
-time="2023-04-12T00:17:48Z" level=info msg="Oras - container: ghcr.io/singularityhub/github-ci:latest, target: /mnt/minikube"
-time="2023-04-12T00:17:48Z" level=info msg="Found ORAS container: ghcr.io/singularityhub/github-ci:latest"
-time="2023-04-12T00:17:48Z" level=info msg="Creating oras filestore at: /pv_data/ghcr-io-singularityhub-github-ci-latest"
-time="2023-04-12T00:17:48Z" level=info msg="Preparing to pull from remote repository: ghcr.io/singularityhub/github-ci"
-time="2023-04-12T00:17:49Z" level=info msg="Oras artifact root: /pv_data/ghcr-io-singularityhub-github-ci-latest"
-time="2023-04-12T00:17:49Z" level=info msg="Found artifact asset: container.sif"
-time="2023-04-12T00:17:49Z" level=info msg="volume source directory:/pv_data/ghcr-io-singularityhub-github-ci-latest"
-time="2023-04-12T00:17:49Z" level=info msg="volume target directory:/var/lib/kubelet/pods/b11f4a2e-8122-4d7d-86ab-8bc1217d839e/volumes/kubernetes.io~csi/oras-inline/mount"
-time="2023-04-12T00:17:49Z" level=info msg="volume options:[ro]"
-time="2023-04-12T00:17:49Z" level=info msg="BindMount - source: /pv_data/ghcr-io-singularityhub-github-ci-latest, target: /var/lib/kubelet/pods/b11f4a2e-8122-4d7d-86ab-8bc1217d839e/volumes/kubernetes.io~csi/oras-inline/mount, options: [ro]"
-time="2023-04-12T00:17:49Z" level=info msg="mount -o bind /pv_data/ghcr-io-singularityhub-github-ci-latest /var/lib/kubelet/pods/b11f4a2e-8122-4d7d-86ab-8bc1217d839e/volumes/kubernetes.io~csi/oras-inline/mount"
-time="2023-04-12T00:17:49Z" level=info msg="Successfully mounted /pv_data/ghcr-io-singularityhub-github-ci-latest to /var/lib/kubelet/pods/b11f4a2e-8122-4d7d-86ab-8bc1217d839e/volumes/kubernetes.io~csi/oras-inline/mount"
+```console
+time="2023-04-12T20:31:46Z" level=info msg="Preparing artifact cache (mode: node; node-id: minikube; root-dir: /; plugin-data-dir: pv_data)"
+time="2023-04-12T20:31:46Z" level=info msg="NewNodeService creation (rootDir /, pluginDataDir pv_data, nodeId minikube, mountPointsCount 1)"
+time="2023-04-12T20:31:46Z" level=info msg="Setting up ORAS Logging. ORAS path: /pv_data/logs"
+time="2023-04-12T20:31:46Z" level=info msg="ORAS Logging set up!"
+time="2023-04-12T20:31:46Z" level=info msg="StartService - endpoint unix:///csi/csi.sock"
+time="2023-04-12T20:31:46Z" level=info msg=CreategRPCServer
+time="2023-04-12T20:31:46Z" level=info msg="CreateListener - endpoint unix:///csi/csi.sock"
+time="2023-04-12T20:31:46Z" level=info msg="CreateListener - Removing socket /csi/csi.sock"
+time="2023-04-12T20:31:46Z" level=info msg="StartService - Registering node service"
+time="2023-04-12T20:31:46Z" level=info msg="StartService - Starting to serve!"
+time="2023-04-12T20:31:46Z" level=info msg=GetPluginInfo
+time="2023-04-12T20:31:47Z" level=info msg=NodeGetInfo
+time="2023-04-12T20:32:43Z" level=info msg="NodePublishVolume - VolumeId: csi-997d0afca658f39939fafc20ffaf7b059be2f70940b594cba6cbfde715670fc1, Readonly: true, VolumeContext map[container:ghcr.io/singularityhub/github-ci:latest csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:77268dbb-b6a8-4b73-a580-677d4eb93178 csi.storage.k8s.io/serviceAccount.name:default], PublishContext map[], VolumeCapability mount:<> access_mode:<mode:SINGLE_NODE_WRITER >  TargetPath /var/lib/kubelet/pods/77268dbb-b6a8-4b73-a580-677d4eb93178/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-04-12T20:32:43Z" level=info msg="Looking for volume context...."
+time="2023-04-12T20:32:43Z" level=info msg="map[container:ghcr.io/singularityhub/github-ci:latest csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:77268dbb-b6a8-4b73-a580-677d4eb93178 csi.storage.k8s.io/serviceAccount.name:default]"
+time="2023-04-12T20:32:43Z" level=info msg="Oras - container: ghcr.io/singularityhub/github-ci:latest, target: /mnt/minikube"
+time="2023-04-12T20:32:43Z" level=info msg="Artifact root does not exist, creating/pv_data/ghcr-io-singularityhub-github-ci-latest"
+time="2023-04-12T20:32:43Z" level=info msg="Found ORAS container: ghcr.io/singularityhub/github-ci:latest"
+time="2023-04-12T20:32:43Z" level=info msg="Creating oras filestore at: /pv_data/ghcr-io-singularityhub-github-ci-latest"
+time="2023-04-12T20:32:43Z" level=info msg="Preparing to pull from remote repository: ghcr.io/singularityhub/github-ci"
+time="2023-04-12T20:32:44Z" level=info msg="Oras artifact root: /pv_data/ghcr-io-singularityhub-github-ci-latest"
+time="2023-04-12T20:32:44Z" level=info msg="Found artifact asset: container.sif"
+time="2023-04-12T20:32:44Z" level=info msg="volume source directory:/pv_data/ghcr-io-singularityhub-github-ci-latest"
+time="2023-04-12T20:32:44Z" level=info msg="volume target directory:/var/lib/kubelet/pods/77268dbb-b6a8-4b73-a580-677d4eb93178/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-04-12T20:32:44Z" level=info msg="volume options:[ro]"
+time="2023-04-12T20:32:44Z" level=info msg="BindMount - source: /pv_data/ghcr-io-singularityhub-github-ci-latest, target: /var/lib/kubelet/pods/77268dbb-b6a8-4b73-a580-677d4eb93178/volumes/kubernetes.io~csi/oras-inline/mount, options: [ro]"
+time="2023-04-12T20:32:44Z" level=info msg="mount -o bind /pv_data/ghcr-io-singularityhub-github-ci-latest /var/lib/kubelet/pods/77268dbb-b6a8-4b73-a580-677d4eb93178/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-04-12T20:32:44Z" level=info msg="Successfully mounted /pv_data/ghcr-io-singularityhub-github-ci-latest to /var/lib/kubelet/pods/77268dbb-b6a8-4b73-a580-677d4eb93178/volumes/kubernetes.io~csi/oras-inline/mount"
 ```
 
 </details>
@@ -177,37 +196,101 @@ spec:
 Let's shell into the pod and see if it's there!
 
 ```bash
-$ kubectl exec -it my-csi-app-inline --- bash
+$ kubectl exec -it my-csi-app-inline -- bash
 ```
 ```console
 root@my-csi-app-inline:/# ls /mnt/oras/
 container.sif
-root@my-csi-app-inline:/# 
 ```
 
-Yay! Try copying your pod into a second (identical one) and creating a mount of the same container at a different location.
+Yay! Try copying your pod into a second (identical one) and creating a mount of the same container at a different location
+(we have provided this second pod file to make it easy):
 
 ```bash
-$ kubectl exec -it my-second-csi-app-inline --- bash
+$ kubectl apply -f examples/kubernetes/pod/second-pod.yaml
+$ kubectl exec -it my-second-csi-app-inline -- bash
 ```
-root@my-second-csi-app-inline:/# ls /mnt
-second-oras
+```console
 root@my-second-csi-app-inline:/# ls /mnt/second-oras/
 container.sif
 ```
 
-To clean up:
+Importantly, in the logs we see an indication that the container was not re-pulled (our original goal): `Artifact root already exists, no need to re-create!`
+
+```console
+time="2023-04-12T20:34:37Z" level=info msg="Artifact root already exists, no need to re-create!"
+time="2023-04-12T20:34:37Z" level=info msg="Oras artifact root: /pv_data/ghcr-io-singularityhub-github-ci-latest"
+time="2023-04-12T20:34:37Z" level=info msg="Found artifact asset: container.sif"
+time="2023-04-12T20:34:37Z" level=info msg="volume source directory:/pv_data/ghcr-io-singularityhub-github-ci-latest"
+time="2023-04-12T20:34:37Z" level=info msg="volume target directory:/var/lib/kubelet/pods/eda9a3b5-b6ce-41c5-84d2-ea7a1ea677bb/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-04-12T20:34:37Z" level=info msg="volume options:[ro]"
+time="2023-04-12T20:34:37Z" level=info msg="BindMount - source: /pv_data/ghcr-io-singularityhub-github-ci-latest, target: /var/lib/kubelet/pods/eda9a3b5-b6ce-41c5-84d2-ea7a1ea677bb/volumes/kubernetes.io~csi/oras-inline/mount, options: [ro]"
+time="2023-04-12T20:34:37Z" level=info msg="mount -o bind /pv_data/ghcr-io-singularityhub-github-ci-latest /var/lib/kubelet/pods/eda9a3b5-b6ce-41c5-84d2-ea7a1ea677bb/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-04-12T20:34:37Z" level=info msg="Successfully mounted /pv_data/ghcr-io-singularityhub-github-ci-latest to /var/lib/kubelet/pods/eda9a3b5-b6ce-41c5-84d2-ea7a1ea677bb/volumes/kubernetes.io~csi/oras-inline/mount"
+```
+
+Let's try testing that the artifact remains persistent on the node and delete both pods, and also
+test deletion. Deletion should run an unmount command, but should not delete anything from our actual node!
+To delete:
 
 ```bash
 $ kubectl delete -f examples/kubernetes/pod/pod.yaml
 $ kubectl delete -f examples/kubernetes/pod/second-pod.yaml
 ```
 
-It should be the same artifact, but used in a different pod. Note that I haven't tested this in entirety,
-nor have I looked closely to ensure the unstage works. What we need to do is add proper testing, and then
-ensure that we are only pulling once, and then likely set a much higher [upper limit](https://github.com/oras-project/oras-go/blob/e8225cb1e125bd4c13d6b586ae6d862050c3fae2/registry/remote/repository.go#L98-L102) 
-for the artifact size. Then we might want a predictable name for an artifact, and that way we can provide a SIF and name
-it reliably for a workflow to find. But this is a pretty good start for a day and a half!
+These RPC actions hit the "NodeUnpublishVolume" endpoint and (I've noticed) at least for MiniKube they take
+a hot minute to run. When it's run you'll see:
+
+```console
+time="2023-04-12T20:49:29Z" level=info msg="NodeUnpublishVolume - VolumeId: csi-990169a3156cb7579912440f451f5ff18d46b71d775aa25e7fac2698e0971955, TargetPath: /var/lib/kubelet/pods/ce9055f0-02e3-493f-9bf2-203a96a9d051/volumes/kubernetes.io~csi/oras-inline/mount)"
+time="2023-04-12T20:49:29Z" level=info msg="BindUMount - target: /var/lib/kubelet/pods/ce9055f0-02e3-493f-9bf2-203a96a9d051/volumes/kubernetes.io~csi/oras-inline/mount"
+```
+
+We can actually sanity check that the artifacts still persist on the plugin as follows:
+
+```bash
+$ kubectl exec -it -n kube-system csi-oras-node-ghnkj -c csi-oras-plugin -- bash
+```
+```console
+root@minikube:/# ls /pv_data/
+ghcr-io-singularityhub-github-ci-latest
+root@minikube:/# ls /pv_data/ghcr-io-singularityhub-github-ci-latest/
+container.sif
+```
+
+Now we can theoretically create a pod again, and that same container.sif should be used (you should see the message about it already existing):
+
+```bash
+$ kubectl apply -f examples/kubernetes/pod/pod.yaml
+```
+```console
+time="2023-04-12T20:52:16Z" level=info msg="Artifact root already exists, no need to re-create!"
+```
+
+And that's it! We very likely should have an attribute that specifies for this to be cleaned up and re-created. E.g., you
+can imagine using the same reference that has changed in the registry that you want to pull again.
+
+Finally, clean up the whole thing and pod again!
+
+```bash
+$ kubectl delete -f examples/kubernetes/pod/pod.yaml
+$ make clean
+```
+
+## Planning
+
+These are ideas / features that would be nice to have:
+
+ - writeup of use cases we are interested in addressing
+ - standards for defining assets and actions to take (e.g., copy this binary here, this directory here, get this annotation and do X, name this file Y)
+ - an ability to specify and enforce some permissions namespace for the artifacts (e.g., for multi-tenant cluster)
+ - an ability to specify conditions for cleaning up an artifact when the kubernetes pod / object is deleted
+ - Set a much higher [upper limit](https://github.com/oras-project/oras-go/blob/e8225cb1e125bd4c13d6b586ae6d862050c3fae2/registry/remote/repository.go#L98-L102) for the artifact size. 
+ - Allow predictable naming for an artifact
+ - Proper testing of the CSI
+
+This is a pretty good start for a quick prototype!
+
 
 ## Thanks
 
@@ -215,5 +298,3 @@ I looked at a lot of examples to figure out the basic architecture I wanted to u
 
 - [csi-inline-volume](https://kubernetes.io/blog/2022/08/29/csi-inline-volumes-ga/)
 - [moosefs-csi](https://github.com/moosefs/moosefs-csi) is what I used to learn and template the design here, also under an Apache 2.0 license. This is Copyright of Saglabs SA.
-
-

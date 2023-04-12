@@ -68,30 +68,6 @@ func (mnt *orasHandler) SetOrasLogging() {
 	log.Info("ORAS Logging set up!")
 }
 
-func (mnt *orasHandler) VolumeExist(volumeId string) (bool, error) {
-	path := mnt.HostPathToVolume(volumeId)
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
-}
-
-func (mnt *orasHandler) MountVolumeExist(volumeId string) (bool, error) {
-	path := mnt.HostPathToMountVolume(volumeId)
-	_, err := os.Stat(path)
-	if err == nil {
-		return true, nil
-	}
-	if os.IsNotExist(err) {
-		return false, nil
-	}
-	return false, err
-}
-
 func (mnt *orasHandler) CreateMountVolume(volumeId string) error {
 	path := mnt.HostPathToMountVolume(volumeId)
 	if err := os.MkdirAll(path, newVolumeMode); err != nil {
@@ -122,10 +98,13 @@ func (mnt *orasHandler) ensureArtifact(artifactRoot string, container string) er
 
 	if _, err := os.Stat(artifactRoot); errors.Is(err, os.ErrNotExist) {
 
+		log.Info("Artifact root does not exist, creating", artifactRoot)
 		// Pull Oras Container, if doesn't exist
 		if err := mnt.OrasPull(artifactRoot, container); err != nil {
 			return err
 		}
+	} else {
+		log.Info("Artifact root already exists, no need to re-create!")
 	}
 	return nil
 }
@@ -226,6 +205,9 @@ func (mnt *orasHandler) OrasPathToVolume(container string) (string, error) {
 	// Ensure plugin data directory exists first
 	pluginData := path.Join(mnt.rootPath, mnt.pluginDataPath)
 	artifactRoot := path.Join(pluginData, artifact+"-"+tag)
+
+	// TODO not sure if ORAS creates the artifact root for us
+	// (and then we create the root, as we do here)
 	if _, err := os.Stat(artifactRoot); os.IsNotExist(err) {
 		os.MkdirAll(pluginData, os.ModePerm)
 	}

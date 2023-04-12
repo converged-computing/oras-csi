@@ -113,6 +113,7 @@ func (ns *NodeService) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
+// NodeUnpublishVolume removes the bind
 func (ns *NodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnpublishVolumeRequest) (*csi.NodeUnpublishVolumeResponse, error) {
 	log.Infof("NodeUnpublishVolume - VolumeId: %s, TargetPath: %s)", req.GetVolumeId(), req.GetTargetPath())
 	if req.VolumeId == "" {
@@ -122,19 +123,9 @@ func (ns *NodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnp
 		return nil, status.Error(codes.InvalidArgument, "NodeUnpublishVolume: Target Path must be provided")
 	}
 
-	found, err := ns.mountPoints[0].VolumeExist(req.VolumeId)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	} else if !found {
-		found, err = ns.mountPoints[0].MountVolumeExist(req.VolumeId)
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
-		}
-		if !found {
-			return nil, status.Errorf(codes.NotFound, "NodeUnpublishVolume: volume %s not found", req.VolumeId)
-		}
-	}
-	if err = ns.mountPoints[0].BindUMount(req.TargetPath); err != nil {
+	// We don't have the original container URI, so we don't check that it exists.
+	// We are required to be provided with the container URI
+	if err := ns.mountPoints[0].BindUMount(req.TargetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &csi.NodeUnpublishVolumeResponse{}, nil
