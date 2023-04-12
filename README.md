@@ -281,13 +281,14 @@ $ make clean
 
 These are ideas / features that would be nice to have:
 
+ - writeup of use cases we are interested in addressing
  - standards for defining assets and actions to take (e.g., copy this binary here, this directory here, get this annotation and do X, name this file Y)
  - an ability to specify and enforce some permissions namespace for the artifacts (e.g., for multi-tenant cluster)
  - an ability to specify conditions for cleaning up an artifact when the kubernetes pod / object is deleted
  - Set a much higher [upper limit](https://github.com/oras-project/oras-go/blob/e8225cb1e125bd4c13d6b586ae6d862050c3fae2/registry/remote/repository.go#L98-L102) for the artifact size. 
  - Allow predictable naming for an artifact
  - Proper testing of the CSI
- 
+
 This is a pretty good start for a quick prototype!
 
 

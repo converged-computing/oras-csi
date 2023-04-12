@@ -29,7 +29,7 @@ push-dev: build-dev
 	@echo "==> Your DEV image is now available at $(DOCKER_REGISTRY)/oras-csi-plugin:$(DEVTAG)"
 
 push: build
-	@echo "==> Publishing DEV $(DOCKER_REGISTRY)/oras-csi-plugin:$(DRIVER_VERSION)"
+	@echo "==> Publishing $(DOCKER_REGISTRY)/oras-csi-plugin:$(DRIVER_VERSION)"
 	@docker push $(DOCKER_REGISTRY)/oras-csi-plugin:$(DRIVER_VERSION)
 	@docker push $(DOCKER_REGISTRY)/oras-csi-plugin:latest
 	@echo "==> Your published image is now available at $(DOCKER_REGISTRY)/oras-csi-plugin:$(DRIVER_VERSION)"
