@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type MounterInterface interface {
@@ -44,6 +45,27 @@ const (
 	newDirMode = 0750
 )
 
+// touch a file
+func touch(filename string) error {
+
+	_, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		file, err := os.Create(filename)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+	} else {
+
+		currentTime := time.Now().Local()
+		err = os.Chtimes(filename, currentTime, currentTime)
+		if err != nil {
+			fmt.Println(err)
+		}
+	}
+	return nil
+}
+
 func (m *Mounter) Mount(sourcePath, destPath, mountType string, opts ...string) error {
 	mountArgs := []string{}
 	if sourcePath == "" {
@@ -56,12 +78,14 @@ func (m *Mounter) Mount(sourcePath, destPath, mountType string, opts ...string) 
 
 	// https://www.mardy.it/blog/2018/10/how-to-bind-mount-single-file.html
 	// $ touch destdir/myfile
-	// $ sudo mount -o ro,bind myfile destdir/myfile
-	mountArgs = append(mountArgs, "-t", mountType)
-	if len(opts) > 0 {
-		mountArgs = append(mountArgs, "-o", strings.Join(opts, ","))
-	}
+	//err := touch(destPath)
+	//if err != nil {
+	//	return err
+	//}
 
+	// $ sudo mount -o ro,bind myfile destdir/myfile
+	// TODO opts should be variable
+	mountArgs = append(mountArgs, "-o", "bind")
 	mountArgs = append(mountArgs, sourcePath)
 	mountArgs = append(mountArgs, destPath)
 
@@ -72,6 +96,10 @@ func (m *Mounter) Mount(sourcePath, destPath, mountType string, opts ...string) 
 	}
 	log.Info(mountCmd + " " + strings.Join(mountArgs, " "))
 	out, err := exec.Command(mountCmd, mountArgs...).CombinedOutput()
+
+	// $ touch destdir/myfile
+	// $ sudo mount -o ro,bind myfile destdir/myfile
+
 	if err != nil {
 		return fmt.Errorf("Mounter::Mount -- mounting failed: %v cmd: '%s %s' output: %q",
 			err, mountCmd, strings.Join(mountArgs, " "), string(out))
@@ -85,7 +113,6 @@ func (m *Mounter) UMount(destPath string) error {
 	if destPath == "" {
 		return errors.New("Mounter::UMount -- Destination path must be provided")
 	}
-	// todo(ad): sprawdzanie czy istnieje katalog
 	umountArgs = append(umountArgs, destPath)
 
 	out, err := exec.Command(umountCmd, umountArgs...).CombinedOutput()

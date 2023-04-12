@@ -6,6 +6,17 @@ DOCKER_REGISTRY=ghcr.io/converged-computing
 
 ready: clean compile
 publish-dev: clean compile build-dev push-dev
+redo: uninstall compile build push install
+
+uninstall:
+	@echo "==> Uninstalling plugin"
+	kubectl delete -f deploy/kubernetes/csi-oras.yaml || true 
+	kubectl delete -f deploy/kubernetes/csi-oras-config.yaml || true
+
+install:
+	@echo "==> Installing plugin"
+	kubectl apply -f deploy/kubernetes/csi-oras.yaml || true
+	kubectl apply -f deploy/kubernetes/csi-oras-config.yaml || true
 
 compile:
 	@echo "==> Building the project"
@@ -22,8 +33,12 @@ push:
 	@docker push $(DOCKER_REGISTRY)/oras-csi-plugin:latest
 	@echo "==> Your DEV image is now available at $(DOCKER_REGISTRY)/oras-csi-plugin:$(DEVTAG)"
 
+
 clean:
 	@echo "==> Cleaning releases"
 	@GOOS=linux go clean -i -x ./...
+	kubectl delete -f deploy/kubernetes/csi-oras.yaml || true 
+	kubectl delete -f deploy/kubernetes/csi-oras-config.yaml || true
+	kubectl delete --force pods --all
 
 .PHONY: clean

@@ -2,6 +2,7 @@ package driver
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
@@ -20,23 +21,40 @@ type NodeService struct {
 
 var _ csi.NodeServer = &NodeService{}
 
-var nodeCapabilities = []csi.NodeServiceCapability_RPC_Type{
-	//csi.NodeServiceCapability_RPC_GET_VOLUME_STATS,
-	//csi.NodeServiceCapability_RPC_VOLUME_CONDITION,
-	//csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
+// NodeStageVolume only exists to validate arguments
+func (ns *NodeService) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
+	if len(req.GetVolumeId()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
+	}
+	if len(req.GetStagingTargetPath()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
+	}
+	if req.GetVolumeCapability() == nil {
+		return nil, status.Error(codes.InvalidArgument, "Volume capability missing in request")
+	}
+
+	return &csi.NodeStageVolumeResponse{}, nil
+}
+
+func (ns *NodeService) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnstageVolumeRequest) (*csi.NodeUnstageVolumeResponse, error) {
+	if len(req.GetVolumeId()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Volume ID missing in request")
+	}
+	if len(req.GetStagingTargetPath()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "Target path missing in request")
+	}
+
+	return &csi.NodeUnstageVolumeResponse{}, nil
 }
 
 // NewNodeService creates the node service that runs on every node.
-func NewNodeService(container string, rootPath, pluginDataPath, nodeId string, mountPointsCount int) (*NodeService, error) {
-	log.Infof("NewNodeService creation (container %s, rootDir %s, pluginDataDir %s, nodeId %s, mountPointsCount %d)", container, rootPath, pluginDataPath, nodeId, mountPointsCount)
+func NewNodeService(rootPath, pluginDataPath, nodeId string, mountPointsCount int) (*NodeService, error) {
+	log.Infof("NewNodeService creation (rootDir %s, pluginDataDir %s, nodeId %s, mountPointsCount %d)", rootPath, pluginDataPath, nodeId, mountPointsCount)
 
 	// One plugin per mount point. In layman's terms, there is 1:1 plugin:kubernetes node
 	mountPoints := make([]*orasHandler, mountPointsCount)
 	for i := 0; i < mountPointsCount; i++ {
-		mountPoints[i] = NewOrasHandler(container, rootPath, pluginDataPath, nodeId, i, mountPointsCount)
-		if err := mountPoints[i].MountOras(); err != nil {
-			return nil, err
-		}
+		mountPoints[i] = NewOrasHandler(rootPath, pluginDataPath, nodeId, i, mountPointsCount)
 	}
 	if OrasLog {
 		mountPoints[0].SetOrasLogging()
@@ -58,22 +76,34 @@ func (ns *NodeService) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 	if req.TargetPath == "" {
 		return nil, status.Error(codes.InvalidArgument, "NodePublishVolume: TargetPath must be provided")
 	}
-	if req.VolumeCapability == nil {
-		return nil, status.Error(codes.InvalidArgument, "NodePublishVolume: VolumeCapability must be provided")
+
+	log.Info("Looking for volume context....")
+	volumeContext := req.GetVolumeContext()
+
+	// We are required to be provided with the container URI
+	log.Info(volumeContext)
+	container, found := volumeContext["container"]
+	if !found {
+		return nil, status.Error(codes.InvalidArgument, "NodePublishVolume: VolumeContext -> container must be provided")
 	}
 
-	var source string
-	if subDir, found := req.GetVolumeContext()["mfsSubDir"]; found {
-		source = subDir
-	} else {
-		source = ns.mountPoints[0].MfsPathToVolume(req.VolumeId)
+	// Prepare a directory just for the artifact
+	// Since this is a bind mount, it can be bound more than once
+	source, err := ns.mountPoints[0].OrasPathToVolume(container)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("NodePublishVolume: Unable to prepare container %s", err))
 	}
+	log.Info("volume source directory:", source)
+
 	target := req.TargetPath
+	log.Info("volume target directory:", target)
+
 	options := req.VolumeCapability.GetMount().MountFlags
 	if req.GetReadonly() {
 		options = append(options, "ro")
 	}
-	if handler, err := ns.pickHandler(req.GetVolumeContext(), req.GetPublishContext()); err != nil {
+	log.Info("volume options:", options)
+	if handler, err := ns.getHandler(req.GetVolumeContext(), req.GetPublishContext()); err != nil {
 		return nil, err
 	} else {
 		if err := handler.BindMount(source, target, options...); err != nil {
@@ -110,6 +140,7 @@ func (ns *NodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnp
 	return &csi.NodeUnpublishVolumeResponse{}, nil
 }
 
+// NodeGetInfo returns the nodeid
 func (ns *NodeService) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	log.Infof("NodeGetInfo")
 	return &csi.NodeGetInfoResponse{
@@ -118,62 +149,35 @@ func (ns *NodeService) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequ
 }
 
 func (ns *NodeService) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabilitiesRequest) (*csi.NodeGetCapabilitiesResponse, error) {
-	log.Infof("NodeGetCapabilities")
-	var caps []*csi.NodeServiceCapability
-	for _, capa := range nodeCapabilities {
-		caps = append(caps, &csi.NodeServiceCapability{
+	caps := []*csi.NodeServiceCapability{
+		{
 			Type: &csi.NodeServiceCapability_Rpc{
 				Rpc: &csi.NodeServiceCapability_RPC{
-					Type: capa,
+					Type: csi.NodeServiceCapability_RPC_STAGE_UNSTAGE_VOLUME,
 				},
 			},
-		})
+		},
 	}
 	return &csi.NodeGetCapabilitiesResponse{
 		Capabilities: caps,
 	}, nil
 }
 
-/*
-func (ns *NodeService) NodeGetVolumeStats(ctx context.Context, req *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
-	log.Infof("NodeService::NodeGetVolumeStats (volume_id %s, volume_path %s, staging_path %s)",
-		req.VolumeId, req.VolumePath, req.StagingTargetPath)
-
-	if req.VolumeId == "" {
-		return nil, status.Error(codes.InvalidArgument, "NodeGetVolumeStats: VolumeId must be provided")
-	}
-	if req.VolumePath == "" {
-		return nil, status.Error(codes.InvalidArgument, "NodeGetVolumeStats: VolumePath must be provided")
-	}
-
-	cond := false
-	_, err := ioutil.ReadDir(req.VolumePath)
-	if err != nil {
-		log.Infof("%s %s corrupted", req.VolumeId, req.VolumePath)
-		cond = true
-	} else {
-		log.Infof("%s %s NOT corrupted", req.VolumeId, req.VolumePath)
-	}
-	return &csi.NodeGetVolumeStatsResponse{VolumeCondition: &csi.VolumeCondition{
-		Abnormal: cond,
-		Message:  "",
-	}}, nil
-}
-*/
-//////////////
-
-// pickHandler - Returns proper handler. Currently picks random mfs handler.
-func (ns *NodeService) pickHandler(volumeContext map[string]string, publishContext map[string]string) (*orasHandler, error) {
+// getHandler - adds a check that we have handlers and returns a random handler from our set
+// TODO wouldn't we want to return the same node the request is being done on here?
+func (ns *NodeService) getHandler(volumeContext map[string]string, publishContext map[string]string) (*orasHandler, error) {
 	if ns.mountPointsCount <= 0 {
-		return nil, status.Error(codes.Internal, "pickHandler: there is no mfs handlers")
+		return nil, status.Error(codes.Internal, "orasHandler: there are no handlers")
 	}
 	return ns.mountPoints[rand.Uint32()%uint32(ns.mountPointsCount)], nil
 }
 
-// pickHandlerFromVolumeId - Unimplemented, always picks first handler.
-func (ns *NodeService) pickHandlerFromVolumeId(volumeId string) (*orasHandler, error) {
-	if ns.mountPointsCount <= 0 {
-		return nil, status.Error(codes.Internal, "pickHandlerFromVolumeId: there is no mfs handlers")
-	}
-	return ns.mountPoints[0], nil
+// NodeExpandVolume not implemented
+func (ns *NodeService) NodeExpandVolume(ctx context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "NodeExpandVolume is not implemented")
+}
+
+// NodeGetVolumeStats not implemented
+func (ns *NodeService) NodeGetVolumeStats(ctx context.Context, in *csi.NodeGetVolumeStatsRequest) (*csi.NodeGetVolumeStatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "")
 }
