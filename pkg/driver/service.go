@@ -51,9 +51,6 @@ func StartService(service *Service, mode, csiEndpoint string) error {
 	case *NodeService:
 		log.Infof("StartService - Registering node service")
 		csi.RegisterNodeServer(gRPCServer, (*service).(csi.NodeServer))
-	case *ControllerService:
-		log.Infof("StartService - Registering controller service")
-		csi.RegisterControllerServer(gRPCServer, (*service).(csi.ControllerServer))
 	default:
 		return fmt.Errorf("StartService: Unrecognized service type: %T", service)
 	}

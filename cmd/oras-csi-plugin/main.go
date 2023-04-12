@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/converged-computing/oras-csi/driver"
+	"github.com/converged-computing/oras-csi/pkg/driver"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -11,7 +11,6 @@ func main() {
 	var (
 		mode             = flag.String("mode", "unspecified", "")
 		csiEndpoint      = flag.String("csi-endpoint", "unix:///var/lib/csi/sockets/pluginproxy/csi.sock", "CSI endpoint")
-		containerURI     = flag.String("container", "", "")
 		nodeId           = flag.String("node-id", "", "")
 		rootDir          = flag.String("root-dir", "/", "")
 		pluginDataDir    = flag.String("plugin-data-dir", "/", "")
@@ -28,8 +27,8 @@ func main() {
 	if *sanityTestRun {
 		log.Infof("=============== SANITY TEST ===============")
 	}
-	log.Infof("Preparing artifact cache (mode: %s; container: %s; node-id: %s; root-dir: %s; plugin-data-dir: %s)",
-		*mode, *containerURI, *nodeId, *rootDir, *pluginDataDir)
+	log.Infof("Preparing artifact cache (mode: %s; node-id: %s; root-dir: %s; plugin-data-dir: %s)",
+		*mode, *nodeId, *rootDir, *pluginDataDir)
 
 	var srv driver.Service
 	var err error
@@ -37,17 +36,9 @@ func main() {
 
 	// Node service: run on the node where the plugin will be published
 	case "node":
-		srv, err = driver.NewNodeService(*containerURI, *rootDir, *pluginDataDir, *nodeId, *mountPointsCount)
+		srv, err = driver.NewNodeService(*rootDir, *pluginDataDir, *nodeId, *mountPointsCount)
 		if err != nil {
 			log.Error("main - couldn't create node service. Error: %s", err.Error())
-			return
-		}
-
-	// Controller service can be run anywhere
-	case "controller":
-		srv, err = driver.NewControllerService(*containerURI, *rootDir, *pluginDataDir)
-		if err != nil {
-			log.Error("main - couldn't create controller service. Error: %s", err.Error())
 			return
 		}
 	default:

@@ -4,8 +4,6 @@ metadata:
   namespace: kube-system
   name: csi-oras-config
 data:
-  container_uri: oras://ghcr.io/singularityhub/github-ci:latest
-  # container_uri: oras://ghcr.io/rse-ops/singularity-mpi:mpich
   k8s_root_dir: "/"                     # root directory for all claims within this Kubernetes cluster
   driver_working_dir: "pv_data"         # ORAS directory (relative to csi_root_dir) for all driver data
                                         # (effective working dir will be calculated as k8s_root_dir/driver_working_dir)

@@ -23,20 +23,12 @@ func (is *IdentityService) GetPluginInfo(ctx context.Context, req *csi.GetPlugin
 	}, nil
 }
 
-// GetPluginCapabilities returns the message that this provides a controller service, and does not provide volume expansion
+// GetPluginCapabilities returns the message of what the csi provides
 func (is *IdentityService) GetPluginCapabilities(ctx context.Context, req *csi.GetPluginCapabilitiesRequest) (*csi.GetPluginCapabilitiesResponse, error) {
 	log.Infof("GetPluginCapabilities")
 
 	return &csi.GetPluginCapabilitiesResponse{
 		Capabilities: []*csi.PluginCapability{
-			{
-				Type: &csi.PluginCapability_Service_{
-					Service: &csi.PluginCapability_Service{
-						Type: csi.PluginCapability_Service_CONTROLLER_SERVICE,
-					},
-				},
-			},
-
 			// Volumes cannot be expanded
 			{
 				Type: &csi.PluginCapability_VolumeExpansion_{
