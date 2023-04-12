@@ -22,24 +22,24 @@ compile:
 	@echo "==> Building the project"
 	@env CGO_ENABLED=0 GOCACHE=/tmp/go-cache GOOS=linux GOARCH=amd64 go build -a -o cmd/oras-csi-plugin/${NAME} cmd/oras-csi-plugin/main.go
 
-push-dev:
+push-dev: build-dev
 	@echo "==> Publishing DEV $(DOCKER_REGISTRY)/oras-csi-plugin:$(DEVTAG)"
 	@docker push $(DOCKER_REGISTRY)/oras-csi-plugin:$(DEVTAG)
 	@docker push $(DOCKER_REGISTRY)/oras-csi-plugin:latest
 	@echo "==> Your DEV image is now available at $(DOCKER_REGISTRY)/oras-csi-plugin:$(DEVTAG)"
 
-push:
+push: build
 	@echo "==> Publishing DEV $(DOCKER_REGISTRY)/oras-csi-plugin:$(DRIVER_VERSION)"
 	@docker push $(DOCKER_REGISTRY)/oras-csi-plugin:$(DRIVER_VERSION)
 	@docker push $(DOCKER_REGISTRY)/oras-csi-plugin:latest
 	@echo "==> Your published image is now available at $(DOCKER_REGISTRY)/oras-csi-plugin:$(DRIVER_VERSION)"
 
-build:
+build: compile
 	@echo "==> Building docker images"
 	@docker build -t $(DOCKER_REGISTRY)/oras-csi-plugin:$(DRIVER_VERSION) cmd/oras-csi-plugin
 	@docker build -t $(DOCKER_REGISTRY)/oras-csi-plugin:latest cmd/oras-csi-plugin
 
-build-dev:
+build-dev: compile
 	@echo "==> Building DEV docker images"
 	@docker build -t $(DOCKER_REGISTRY)/oras-csi-plugin:$(DEVTAG) cmd/oras-csi-plugin
 	@docker build -t $(DOCKER_REGISTRY)/oras-csi-plugin:latest cmd/oras-csi-plugin
