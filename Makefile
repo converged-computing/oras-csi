@@ -4,9 +4,24 @@ DEVTAG=$(DRIVER_VERSION)-dev
 NAME=oras-csi-plugin
 DOCKER_REGISTRY=ghcr.io/converged-computing
 
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
 .PHONY: help
 help: ## Generates help for all targets
 	@grep -E '^[^#[:space:]].*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+HELMIFY ?= $(LOCALBIN)/helmify
+
+.PHONY: helmify
+helmify: $(HELMIFY) ## Download helmify locally if necessary.
+$(HELMIFY): $(LOCALBIN)
+	test -s $(LOCALBIN)/helmify || GOBIN=$(LOCALBIN) go install github.com/arttor/helmify/cmd/helmify@latest
+    
+helm: helmify
+	awk 'FNR==1 && NR!=1  {print "---"}{print}' ./deploy/kubernetes/*.yaml | $(HELMIFY)
 
 ready: clean compile ## Clean pods and compiles the driver
 publish: uninstall compile build push install ## Publish DRIVER_VERSION
@@ -19,8 +34,8 @@ uninstall: ## Uninstalls the plugin from the cluster
 
 install: ## Install plugin into the cluster
 	@echo "==> Installing plugin"
-	kubectl apply -f deploy/kubernetes/csi-oras.yaml || true
-	kubectl apply -f deploy/kubernetes/csi-oras-config.yaml || true
+	kubectl apply -f deploy/kubernetes/csi-oras.yaml
+	kubectl apply -f deploy/kubernetes/csi-oras-config.yaml
 
 compile:
 	@echo "==> Building the project"

@@ -1,0 +1,27 @@
+config:
+  driverWorkingDir: pv_data
+  k8SRootDir: /
+  mountCount: "1"
+  orasLogging: "true"
+kubernetesClusterDomain: cluster.local
+node:
+  csiOrasPlugin:
+    containerSecurityContext:
+      allowPrivilegeEscalation: true
+      capabilities:
+        add:
+        - SYS_ADMIN
+      privileged: true
+    env:
+      csiEndpoint: unix:///csi/csi.sock
+    image:
+      repository: ghcr.io/converged-computing/oras-csi-plugin
+      tag: latest
+    imagePullPolicy: Always
+  driverRegistrar:
+    env:
+      address: /csi/csi.sock
+      driverRegSockPath: /var/lib/kubelet/plugins/csi.oras.land/csi.sock
+    image:
+      repository: quay.io/k8scsi/csi-node-driver-registrar
+      tag: v1.1.0

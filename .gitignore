@@ -3,3 +3,4 @@ Gopkg.toml
 /cmd/oras-csi-plugin/oras-csi-plugin
 /vendor
 /.idea
+bin
