@@ -12,6 +12,6 @@ jobs:
     - name: Check Spelling
       uses: crate-ci/typos@7ad296c72fa8265059cc03d1eda562fbdfcd6df2 # v1.9.0
       with:
-        files: ./README.md
+        files: ./README.md ./docs/*.md
 
   # TODO add unit-tests
