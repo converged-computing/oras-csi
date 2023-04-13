@@ -28,7 +28,7 @@ Additionally, this approach minimizes the risk of introducing new issues or erro
 
 #### Sample java app
 
-The following application is composed from a java 
+The following application is composed from a java base image, and the application artifact is added by the CSI.
 
 ```yaml
 kind: Pod
