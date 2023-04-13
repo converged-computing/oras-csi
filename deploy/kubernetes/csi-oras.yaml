@@ -108,7 +108,6 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
 ---
 
----
 kind: DaemonSet
 apiVersion: apps/v1
 metadata:

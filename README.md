@@ -10,15 +10,61 @@ can instantiate to make it easy for others to use it in their Kubernetes cluster
 What I want to get working is an emphemeral, inline plugin that sits alongside a node and can keep a local cache of artifacts
 (e.g., containers or data) to be used between different pod runs (e.g., an indexed job).
 
-## Setup 
+## Install
 
-### Prerequisites
+Note that you need the `--allow-privileged=true` flag set for both API server and kubelet (default value for kubelet is `true`).
+To install, you can use [helm](https://helm.sh): 
 
-* `--allow-privileged=true` flag set for both API server and kubelet (default value for kubelet is `true`)
+```bash
+$ git clone https://github.com/converged-computing/oras-csi
+$ cd oras-csi
+$ helm install oras-csi ./chart
+```
 
-### Local Development
+Or directly from GitHub packages (an OCI registry):
 
-#### Quick Start 
+```
+# helm prior to v3.8.0
+$ export HELM_EXPERIMENTAL_OCI=1
+$ helm pull oci://ghcr.io/converged-computing/oras-csi-helm/chart
+```
+```console
+Pulled: ghcr.io/converged-computing/oras-csi-helm/chart:0.1.0
+```
+
+And install!
+
+```bash
+$ helm install chart-0.1.0.tgz 
+```
+```console
+NAME: oras-csi
+LAST DEPLOYED: Wed Apr 12 22:41:08 2023
+NAMESPACE: default
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+```
+
+or if you have the repository handy, you can customize the [deploy/kubernetes/csi-oras-config.yaml](deploy/kubernetes/csi-config.yaml)  and then do:
+
+```bash
+$ make install
+```
+
+which is the equivalent of:
+
+```bash
+kubectl apply -f deploy/kubernetes/csi-oras.yaml
+kubectl apply -f deploy/kubernetes/csi-oras-config.yaml
+```
+
+When you are done, see [post install](#post-install) for interacting with your driver
+and using it.
+
+## Development
+
+### Quick Start 
 
 After developing local files, we have a single command to uninstall the plugin, build the binary, package it in
 a container, and push to a registry:
@@ -28,10 +74,8 @@ $ make dev
 ```
 
 and then the command installs the configs in [deploy](deploy). You should inspect this logic in the [Makefile](Makefile) first.
-You can see the [deploy](#deploy) section below for how to customize these files beforehand. You can then look
-at logs for the different pods (controller and node plugin) created.
 
-#### Detailed Start
+### Detailed Start
 
 Usually you'll want to develop local files, and then build the binary, package the container,
 and push to a registry:
@@ -63,19 +107,18 @@ Then deploy the driver plugin with the CSI sidecar containers:
 $ kubectl apply -f deploy/kubernetes/csi-oras.yaml
 ```
 
-And then proceed with the regular usage tutorial, next.
+And then proceed with the regular usage tutorial in [post install](#post-install).
 
-### Local Usage
 
-If you aren't developing, you can use the container that is packaged alongside the repository.
-You simply need to install the driver!
+### Build Helm
+
+You can build the helm chart as follows:
 
 ```bash
-$ make install
+$ make helm
 ```
 
-
-#### Inspect Your Driver
+## Post Install
 
 Regardless of how you apply the configs, you can see the containers (plugins on each node) as follows:
 
