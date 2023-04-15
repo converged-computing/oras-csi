@@ -36,7 +36,7 @@ spec:
           oras.options.insecure: true
 ```
 
-Note that the volume attributes are namespaced based on beloning to the driver (or possibly, if not). 
+Note that the volume attributes are namespaced based on belonging to the driver (or possibly, if not). 
 
 ## Options
 
