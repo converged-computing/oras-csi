@@ -1,9 +1,12 @@
 # Development
 
+For the tutorial below, we are using minikube, e.g., `minikube start`. A kind tutorial will come soon.
+
 ## Quick Start 
 
 After developing local files, we have a single command to uninstall the plugin, build the binary, package it in
-a container, and push to a registry:
+a container, and push to a registry. You should check the `Makefile` first an ensure that you are targeting
+a registry you have push permissions for!
 
 ```bash
 $ make dev
@@ -43,13 +46,14 @@ Then deploy the driver plugin with the CSI sidecar containers:
 $ kubectl apply -f deploy/kubernetes/csi-oras.yaml
 ```
 
-And then proceed with the regular usage tutorial in [post install](#post-install).
+And then proceed with the regular usage tutorial in [post install](usage.md).
 
 
 ## Build Helm
 
-You can build the helm chart as follows:
+You can build the helm chart as follows (recommended to delete first)
 
 ```bash
+$ rm -rf ./chart
 $ make helm
 ```

@@ -6,6 +6,7 @@ import (
 	"math/rand"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
+	handler "github.com/converged-computing/oras-csi/pkg/oras"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -14,9 +15,10 @@ type NodeService struct {
 	csi.UnimplementedNodeServer
 	Service
 
-	mountPointsCount int
-	mountPoints      []*orasHandler
-	nodeId           string
+	// Number of oras handlers per node
+	handlersCount int
+	handlers      []*handler.OrasHandler
+	nodeId        string
 }
 
 var _ csi.NodeServer = &NodeService{}
@@ -48,28 +50,28 @@ func (ns *NodeService) NodeUnstageVolume(ctx context.Context, req *csi.NodeUnsta
 }
 
 // NewNodeService creates the node service that runs on every node.
-func NewNodeService(rootPath, pluginDataPath, nodeId string, mountPointsCount int) (*NodeService, error) {
-	log.Infof("NewNodeService creation (rootDir %s, pluginDataDir %s, nodeId %s, mountPointsCount %d)", rootPath, pluginDataPath, nodeId, mountPointsCount)
+func NewNodeService(rootPath, pluginDataPath, nodeId string, handlersCount int, enforceNamespaces bool) (*NodeService, error) {
+	log.Infof("NewNodeService creation (rootDir %s, pluginDataDir %s, nodeId %s, handlersCount %d)", rootPath, pluginDataPath, nodeId, handlersCount)
 
-	// One plugin per mount point. In layman's terms, there is 1:1 plugin:kubernetes node
-	mountPoints := make([]*orasHandler, mountPointsCount)
-	for i := 0; i < mountPointsCount; i++ {
-		mountPoints[i] = NewOrasHandler(rootPath, pluginDataPath, nodeId, i, mountPointsCount)
+	// Create N handlers per node
+	handlers := make([]*handler.OrasHandler, handlersCount)
+	for i := 0; i < handlersCount; i++ {
+		handlers[i] = handler.NewOrasHandler(rootPath, pluginDataPath, enforceNamespaces, nodeId, i, handlersCount)
 	}
 	if OrasLog {
-		mountPoints[0].SetOrasLogging()
+		handlers[0].SetOrasLogging()
 	}
 
 	ns := &NodeService{
-		mountPointsCount: mountPointsCount,
-		mountPoints:      mountPoints,
-		nodeId:           nodeId,
+		handlersCount: handlersCount,
+		handlers:      handlers,
+		nodeId:        nodeId,
 	}
 	return ns, nil
 }
 
 func (ns *NodeService) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolumeRequest) (*csi.NodePublishVolumeResponse, error) {
-	log.Infof("NodePublishVolume - VolumeId: %s, Readonly: %v, VolumeContext %v, PublishContext %v, VolumeCapability %v TargetPath %s", req.GetVolumeId(), req.GetReadonly(), req.GetVolumeContext(), req.GetPublishContext(), req.GetVolumeCapability(), req.GetTargetPath())
+	log.Infof("NodePublishVolume - VolumeId: %s, Readonly: %v, VolumeCapability %v TargetPath %s", req.GetVolumeId(), req.GetReadonly(), req.GetVolumeCapability(), req.GetTargetPath())
 	if req.VolumeId == "" {
 		return nil, status.Error(codes.InvalidArgument, "NodePublishVolume: VolumeId must be provided")
 	}
@@ -81,15 +83,15 @@ func (ns *NodeService) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 	volumeContext := req.GetVolumeContext()
 
 	// We are required to be provided with the container URI
-	log.Info(volumeContext)
-	container, found := volumeContext["container"]
-	if !found {
-		return nil, status.Error(codes.InvalidArgument, "NodePublishVolume: VolumeContext -> container must be provided")
+	// log.Info(volumeContext)
+	settings, err := handler.NewSettings(volumeContext)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("NodePublishVolume: Issue preparing settings %s", err))
 	}
 
 	// Prepare a directory just for the artifact
 	// Since this is a bind mount, it can be bound more than once
-	source, err := ns.mountPoints[0].OrasPathToVolume(container)
+	source, err := ns.handlers[0].OrasPathToVolume(settings)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("NodePublishVolume: Unable to prepare container %s", err))
 	}
@@ -104,12 +106,16 @@ func (ns *NodeService) NodePublishVolume(ctx context.Context, req *csi.NodePubli
 	}
 	log.Info("volume options:", options)
 	if handler, err := ns.getHandler(req.GetVolumeContext(), req.GetPublishContext()); err != nil {
+		log.Info("issue getting handler:", err)
 		return nil, err
 	} else {
 		if err := handler.BindMount(source, target, options...); err != nil {
+			log.Info("issue with bind mount:", err)
 			return nil, status.Error(codes.Internal, err.Error())
 		}
+		log.Info("Mount had no errors")
 	}
+	log.Info("returning NodePublishVolumeResponse")
 	return &csi.NodePublishVolumeResponse{}, nil
 }
 
@@ -125,7 +131,7 @@ func (ns *NodeService) NodeUnpublishVolume(ctx context.Context, req *csi.NodeUnp
 
 	// We don't have the original container URI, so we don't check that it exists.
 	// We are required to be provided with the container URI
-	if err := ns.mountPoints[0].BindUMount(req.TargetPath); err != nil {
+	if err := ns.handlers[0].BindUMount(req.TargetPath); err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 	return &csi.NodeUnpublishVolumeResponse{}, nil
@@ -155,12 +161,15 @@ func (ns *NodeService) NodeGetCapabilities(ctx context.Context, req *csi.NodeGet
 }
 
 // getHandler - adds a check that we have handlers and returns a random handler from our set
-// TODO wouldn't we want to return the same node the request is being done on here?
-func (ns *NodeService) getHandler(volumeContext map[string]string, publishContext map[string]string) (*orasHandler, error) {
-	if ns.mountPointsCount <= 0 {
+func (ns *NodeService) getHandler(volumeContext map[string]string, publishContext map[string]string) (*handler.OrasHandler, error) {
+
+	// No handlers created - this shouldn't happen
+	if ns.handlersCount <= 0 {
 		return nil, status.Error(codes.Internal, "orasHandler: there are no handlers")
 	}
-	return ns.mountPoints[rand.Uint32()%uint32(ns.mountPointsCount)], nil
+
+	// Randomly choose one
+	return ns.handlers[rand.Uint32()%uint32(ns.handlersCount)], nil
 }
 
 // NodeExpandVolume not implemented

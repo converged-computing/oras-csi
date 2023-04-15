@@ -1,6 +1,21 @@
 # Install
 
 Note that you need the `--allow-privileged=true` flag set for both API server and kubelet (default value for kubelet is `true`).
+
+## Options
+
+Whether you install via the helm chart or the included yaml configs, the following options are available to customize the driver:
+
+| Name | Description | Default |
+|------|-------------|---------|
+| csi_root_dir | root directory for all claims | "/"     |                   
+| driver_working_dir | ORAS directory (relative to csi_root_dir) for all driver data (effective working dir will be calculated as csi_root_dir/driver_working_dir | "pv_data" |
+| handlers_count | Number of handlers for each node | "1" |
+| enforce_namespaces | Enforce unique artifacts across namespaces (tradeoff between node storage space and security) | "true" | 
+| oras_logging| Should driver log to csi_root_dir/driver_working_dir/logs directory? |  "true" |
+
+## Helm
+
 To install, you can use [helm](https://helm.sh): 
 
 ```bash
@@ -9,7 +24,19 @@ $ cd oras-csi
 $ helm install oras-csi ./chart
 ```
 
-Or directly from GitHub packages (an OCI registry):
+Note that for helm, you can see the values for the chart as follows:
+
+```bash
+$ helm show values ./chart
+```
+
+And then set any of them for an install:
+
+```bash
+$ helm install config.orasLogging="false" oras-csi ./chart
+```
+
+Or you can install directly from GitHub packages (an OCI registry):
 
 ```
 # helm prior to v3.8.0

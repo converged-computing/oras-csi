@@ -17,4 +17,4 @@ spec:
         driver: csi.oras.land
         readOnly: true
         volumeAttributes:
-          container: "ghcr.io/singularityhub/github-ci:latest"
+          oras.artifact.reference: "ghcr.io/singularityhub/github-ci:latest"
