@@ -3,9 +3,12 @@ kind: ConfigMap
 metadata:
   namespace: kube-system
   name: csi-oras-config
+  labels:
+    app.kubernetes.io/part-of: csi-driver-oras
 data:
-  k8s_root_dir: "/"                     # root directory for all claims within this Kubernetes cluster
+  csi_root_dir: "/"                     # root directory for all claims
   driver_working_dir: "pv_data"         # ORAS directory (relative to csi_root_dir) for all driver data
                                         # (effective working dir will be calculated as k8s_root_dir/driver_working_dir)
-  mount_count: "1"                      # Number of handlers for each node
+  handlers_count: "1"                   # Number of handlers for each node
+  enforce_namespaces: "true"            # Enforce unique artifacts across namespaces 
   oras_logging: "true"                  # Should driver log to k8s_root_dir/driver_working_dir/logs directory

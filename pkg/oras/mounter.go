@@ -1,4 +1,4 @@
-package driver
+package oras
 
 import (
 	"encoding/json"
@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 )
 
 type MounterInterface interface {
@@ -18,7 +17,7 @@ type MounterInterface interface {
 	UMount(destPath string) error
 
 	// Verify mount
-	IsMounted(destPath string) (bool, error)
+	IsMounted(destPath string, testRun bool) (bool, error)
 }
 
 type Mounter struct {
@@ -45,27 +44,6 @@ const (
 	newDirMode = 0750
 )
 
-// touch a file
-func touch(filename string) error {
-
-	_, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		file, err := os.Create(filename)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-	} else {
-
-		currentTime := time.Now().Local()
-		err = os.Chtimes(filename, currentTime, currentTime)
-		if err != nil {
-			fmt.Println(err)
-		}
-	}
-	return nil
-}
-
 func (m *Mounter) Mount(sourcePath, destPath, mountType string, opts ...string) error {
 	mountArgs := []string{}
 	if sourcePath == "" {
@@ -76,15 +54,8 @@ func (m *Mounter) Mount(sourcePath, destPath, mountType string, opts ...string) 
 		return errors.New("Mounter::Mount -- Destination path must be provided")
 	}
 
-	// https://www.mardy.it/blog/2018/10/how-to-bind-mount-single-file.html
-	// $ touch destdir/myfile
-	//err := touch(destPath)
-	//if err != nil {
-	//	return err
-	//}
-
 	// $ sudo mount -o ro,bind myfile destdir/myfile
-	// TODO opts should be variable
+	// TODO opts could be variable
 	mountArgs = append(mountArgs, "-o", "bind")
 	mountArgs = append(mountArgs, sourcePath)
 	mountArgs = append(mountArgs, destPath)
@@ -124,7 +95,7 @@ func (m *Mounter) UMount(destPath string) error {
 	return nil
 }
 
-func (m *Mounter) IsMounted(destPath string) (bool, error) {
+func (m *Mounter) IsMounted(destPath string, testRun bool) (bool, error) {
 	if destPath == "" {
 		return false, errors.New("Mounter::IsMounted -- target must be provided")
 	}
@@ -161,7 +132,7 @@ func (m *Mounter) IsMounted(destPath string) (bool, error) {
 
 	for _, fs := range resp.FileSystems {
 		// check if the mount is propagated correctly. It should be set to shared, unless we run sanity tests
-		if fs.Propagation != "shared" && SanityTestRun == false {
+		if fs.Propagation != "shared" && !testRun {
 			return true, fmt.Errorf("Mounter::IsMounted -- mount propagation for target %q is not enabled (%s instead of shared)", destPath, fs.Propagation)
 		}
 		// the mountpoint should match as well

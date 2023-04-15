@@ -3,6 +3,7 @@ kind: DaemonSet
 metadata:
   name: {{ include "chart.fullname" . }}-node
   labels:
+    app.kubernetes.io/part-of: csi-driver-oras
   {{- include "chart.labels" . | nindent 4 }}
 spec:
   selector:
@@ -13,6 +14,7 @@ spec:
     metadata:
       labels:
         app: csi-oras-node
+        app.kubernetes.io/part-of: csi-driver-oras
         role: csi-oras
       {{- include "chart.selectorLabels" . | nindent 8 }}
     spec:
@@ -47,8 +49,9 @@ spec:
         - --node-id=$(NODE_ID)
         - --root-dir=$(ROOT_DIR)
         - --plugin-data-dir=$(WORKING_DIR)
-        - --mount-points-count=$(MOUNT_COUNT)
+        - --mount-points-count=$(HANDLERS_COUNT)
         - --oras-logging=$(ORAS_LOGGING)
+        - --enforce-namespaces=$(ENFORCE_NAMESPACES)
         env:
         - name: CSI_ENDPOINT
           value: {{ quote .Values.node.csiOrasPlugin.env.csiEndpoint }}
@@ -56,20 +59,25 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: ENFORCE_NAMESPACES
+          valueFrom:
+            configMapKeyRef:
+              key: enforce_namespaces
+              name: {{ include "chart.fullname" . }}-config
         - name: ROOT_DIR
           valueFrom:
             configMapKeyRef:
-              key: k8s_root_dir
+              key: csi_root_dir
               name: {{ include "chart.fullname" . }}-config
         - name: WORKING_DIR
           valueFrom:
             configMapKeyRef:
               key: driver_working_dir
               name: {{ include "chart.fullname" . }}-config
-        - name: MOUNT_COUNT
+        - name: HANDLERS_COUNT
           valueFrom:
             configMapKeyRef:
-              key: mount_count
+              key: handlers_count
               name: {{ include "chart.fullname" . }}-config
         - name: ORAS_LOGGING
           valueFrom:

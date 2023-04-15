@@ -3,9 +3,11 @@ kind: ConfigMap
 metadata:
   name: {{ include "chart.fullname" . }}-config
   labels:
+    app.kubernetes.io/part-of: csi-driver-oras
   {{- include "chart.labels" . | nindent 4 }}
 data:
+  csi_root_dir: {{ .Values.config.csiRootDir | quote }}
   driver_working_dir: {{ .Values.config.driverWorkingDir | quote }}
-  k8s_root_dir: {{ .Values.config.k8SRootDir | quote }}
-  mount_count: {{ .Values.config.mountCount | quote }}
+  enforce_namespaces: {{ .Values.config.enforceNamespaces | quote }}
+  handlers_count: {{ .Values.config.handlersCount | quote }}
   oras_logging: {{ .Values.config.orasLogging | quote }}

@@ -3,6 +3,7 @@ kind: CSIDriver
 metadata:
   name: {{ include "chart.fullname" . }}-csi.oras.land
   labels:
+    app.kubernetes.io/part-of: csi-driver-oras
   {{- include "chart.labels" . | nindent 4 }}
 spec:
   attachRequired: false

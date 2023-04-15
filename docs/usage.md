@@ -1,4 +1,60 @@
-# Post Install
+# User Guide
+
+## Setup
+
+Before using the ORAS CSI Driver, you should read the instructions in [install](install.md).
+
+## How does it work?
+
+The driver can be configured by an administrator to customize control of saving paths and other metadata,
+see the [install](install.md) documentation for that. Once you have the driver installed, you can
+make storage requests for pods by way of `volumeAttributes` for it. Here is an example pod with
+several options:
+
+```yaml
+kind: Pod
+apiVersion: v1
+metadata:
+  name: my-csi-app-inline
+spec:
+  containers:
+    - name: my-container
+      image: ubuntu
+      volumeMounts:
+      - name: oras-inline
+        mountPath: "/mnt/oras"
+        readOnly: true
+      command: ["sleep", "1000000"]
+  volumes:
+    - name: oras-inline
+      csi:
+        driver: csi.oras.land
+        readOnly: true
+        volumeAttributes:
+          oras.artifact.reference: "kind-registry:5000/github-ci:latest"
+          oras.options.plainhttp: true
+          oras.options.insecure: true
+```
+
+Note that the volume attributes are namespaced based on belonging to the driver (or possibly, if not). 
+
+## Options
+
+The full list of options you can define is provided in the table below.
+
+| Name | Description | Required | Default |
+|------|-------------|---------|----------|
+| oras.artifact.reference | The artifact unique resource identifier (URI) | true | unset |
+| oras.artifact.layers.mediatype | one or more (comma separated) media types to filter (include) | false | unset |
+| oras.options.plainhttp | Allow pull of an artifact using plain http | false | false |
+| oras.options.insecure | Allow insecure pull of an artifact | false | false |
+| oras.options.concurrency | Concurrency to use for oras handler download | false | 1 |
+| oras.options.pullalways | Always pull the artifact files afresh | false | false |
+
+Of the above, the only required is the reference. When you provide only a reference, the entire
+artifact will be extracted. We will have more examples and tests for each of the above soon!
+
+## Example
 
 Regardless of how you apply the configs during [install](install.md), you can see the containers (plugins on each node) as follows:
 
@@ -9,7 +65,7 @@ $ kubectl get pods -n kube-system | grep csi-oras
 To see logs for the `oras-csi-plugin` (usually for debugging) since it's a container in a pod, ask to see them:
 
 ```bash
-$ kubectl logs -n kube-system  csi-oras-node-pkdwh csi-oras-plugin -f
+$ kubectl logs -n kube-system csi-oras-node-pkdwh csi-oras-plugin -f
 ```
 ```console
 time="2023-04-11T23:59:29Z" level=info msg="Preparing artifact cache (mode: node; node-id: minikube; root-dir: /; plugin-data-dir: pv_data)"
@@ -24,6 +80,12 @@ time="2023-04-11T23:59:29Z" level=info msg="StartService - Registering node serv
 time="2023-04-11T23:59:29Z" level=info msg="StartService - Starting to serve!"
 time="2023-04-11T23:59:30Z" level=info msg=GetPluginInfo
 time="2023-04-11T23:59:32Z" level=info msg=NodeGetInfo
+```
+
+Or you can use the [Kubernetes app label](https://kubernetes.io/docs/concepts/overview/working-with-objects/common-labels/) for "part-of" to filter pods:
+
+```bash
+$ kubectl get pods -l 'app.kubernetes.io/part-of=csi-driver-oras' --all-namespaces
 ```
 
 And finally, see the storage class (that we've made the default):
@@ -57,34 +119,29 @@ $ kubectl logs -n kube-system csi-oras-node-bb7mw csi-oras-plugin -f
 <summary>More verbose output</summary>
 
 ```console
-time="2023-04-12T20:31:46Z" level=info msg="Preparing artifact cache (mode: node; node-id: minikube; root-dir: /; plugin-data-dir: pv_data)"
-time="2023-04-12T20:31:46Z" level=info msg="NewNodeService creation (rootDir /, pluginDataDir pv_data, nodeId minikube, mountPointsCount 1)"
-time="2023-04-12T20:31:46Z" level=info msg="Setting up ORAS Logging. ORAS path: /pv_data/logs"
-time="2023-04-12T20:31:46Z" level=info msg="ORAS Logging set up!"
-time="2023-04-12T20:31:46Z" level=info msg="StartService - endpoint unix:///csi/csi.sock"
-time="2023-04-12T20:31:46Z" level=info msg=CreategRPCServer
-time="2023-04-12T20:31:46Z" level=info msg="CreateListener - endpoint unix:///csi/csi.sock"
-time="2023-04-12T20:31:46Z" level=info msg="CreateListener - Removing socket /csi/csi.sock"
-time="2023-04-12T20:31:46Z" level=info msg="StartService - Registering node service"
-time="2023-04-12T20:31:46Z" level=info msg="StartService - Starting to serve!"
-time="2023-04-12T20:31:46Z" level=info msg=GetPluginInfo
-time="2023-04-12T20:31:47Z" level=info msg=NodeGetInfo
-time="2023-04-12T20:32:43Z" level=info msg="NodePublishVolume - VolumeId: csi-997d0afca658f39939fafc20ffaf7b059be2f70940b594cba6cbfde715670fc1, Readonly: true, VolumeContext map[container:ghcr.io/singularityhub/github-ci:latest csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:77268dbb-b6a8-4b73-a580-677d4eb93178 csi.storage.k8s.io/serviceAccount.name:default], PublishContext map[], VolumeCapability mount:<> access_mode:<mode:SINGLE_NODE_WRITER >  TargetPath /var/lib/kubelet/pods/77268dbb-b6a8-4b73-a580-677d4eb93178/volumes/kubernetes.io~csi/oras-inline/mount"
-time="2023-04-12T20:32:43Z" level=info msg="Looking for volume context...."
-time="2023-04-12T20:32:43Z" level=info msg="map[container:ghcr.io/singularityhub/github-ci:latest csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:77268dbb-b6a8-4b73-a580-677d4eb93178 csi.storage.k8s.io/serviceAccount.name:default]"
-time="2023-04-12T20:32:43Z" level=info msg="Oras - container: ghcr.io/singularityhub/github-ci:latest, target: /mnt/minikube"
-time="2023-04-12T20:32:43Z" level=info msg="Artifact root does not exist, creating/pv_data/ghcr-io-singularityhub-github-ci-latest"
-time="2023-04-12T20:32:43Z" level=info msg="Found ORAS container: ghcr.io/singularityhub/github-ci:latest"
-time="2023-04-12T20:32:43Z" level=info msg="Creating oras filestore at: /pv_data/ghcr-io-singularityhub-github-ci-latest"
-time="2023-04-12T20:32:43Z" level=info msg="Preparing to pull from remote repository: ghcr.io/singularityhub/github-ci"
-time="2023-04-12T20:32:44Z" level=info msg="Oras artifact root: /pv_data/ghcr-io-singularityhub-github-ci-latest"
-time="2023-04-12T20:32:44Z" level=info msg="Found artifact asset: container.sif"
-time="2023-04-12T20:32:44Z" level=info msg="volume source directory:/pv_data/ghcr-io-singularityhub-github-ci-latest"
-time="2023-04-12T20:32:44Z" level=info msg="volume target directory:/var/lib/kubelet/pods/77268dbb-b6a8-4b73-a580-677d4eb93178/volumes/kubernetes.io~csi/oras-inline/mount"
-time="2023-04-12T20:32:44Z" level=info msg="volume options:[ro]"
-time="2023-04-12T20:32:44Z" level=info msg="BindMount - source: /pv_data/ghcr-io-singularityhub-github-ci-latest, target: /var/lib/kubelet/pods/77268dbb-b6a8-4b73-a580-677d4eb93178/volumes/kubernetes.io~csi/oras-inline/mount, options: [ro]"
-time="2023-04-12T20:32:44Z" level=info msg="mount -o bind /pv_data/ghcr-io-singularityhub-github-ci-latest /var/lib/kubelet/pods/77268dbb-b6a8-4b73-a580-677d4eb93178/volumes/kubernetes.io~csi/oras-inline/mount"
-time="2023-04-12T20:32:44Z" level=info msg="Successfully mounted /pv_data/ghcr-io-singularityhub-github-ci-latest to /var/lib/kubelet/pods/77268dbb-b6a8-4b73-a580-677d4eb93178/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-04-15T03:31:19Z" level=info msg="Preparing artifact cache (mode: node; node-id: minikube; root-dir: /; plugin-data-dir: pv_data enforce-namespaces: %!s(bool=true))"
+time="2023-04-15T03:31:19Z" level=info msg="NewNodeService creation (rootDir /, pluginDataDir pv_data, nodeId minikube, handlersCount 1)"
+time="2023-04-15T03:31:19Z" level=info msg="StartService - endpoint unix:///csi/csi.sock"
+time="2023-04-15T03:31:19Z" level=info msg=CreategRPCServer
+time="2023-04-15T03:31:19Z" level=info msg="CreateListener - endpoint unix:///csi/csi.sock"
+time="2023-04-15T03:31:19Z" level=info msg="CreateListener - Removing socket /csi/csi.sock"
+time="2023-04-15T03:31:19Z" level=info msg="StartService - Registering node service"
+time="2023-04-15T03:31:19Z" level=info msg="StartService - Starting to serve!"
+time="2023-04-15T03:31:20Z" level=info msg=GetPluginInfo
+time="2023-04-15T03:31:22Z" level=info msg=NodeGetInfo
+time="2023-04-15T03:32:26Z" level=info msg="NodePublishVolume - VolumeId: csi-16c0ab68018efd3a4f540655a119f3af7955bdd0d3f8d0882ef749757e154d0d, Readonly: true, VolumeContext map[csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:47933acc-6ba8-4e11-b7ba-71837f6cd0ea csi.storage.k8s.io/serviceAccount.name:default oras.artifact.reference:ghcr.io/singularityhub/github-ci:latest], PublishContext map[], VolumeCapability mount:<> access_mode:<mode:SINGLE_NODE_WRITER >  TargetPath /var/lib/kubelet/pods/47933acc-6ba8-4e11-b7ba-71837f6cd0ea/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-04-15T03:32:26Z" level=info msg="Looking for volume context...."
+time="2023-04-15T03:32:26Z" level=info msg="map[csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:47933acc-6ba8-4e11-b7ba-71837f6cd0ea csi.storage.k8s.io/serviceAccount.name:default oras.artifact.reference:ghcr.io/singularityhub/github-ci:latest]"
+time="2023-04-15T03:32:27Z" level=info msg="volume source directory:/pv_data/ghcr-io-singularityhub-github-ci-latest"
+time="2023-04-15T03:32:27Z" level=info msg="volume target directory:/var/lib/kubelet/pods/47933acc-6ba8-4e11-b7ba-71837f6cd0ea/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-04-15T03:32:27Z" level=info msg="volume options:[ro]"
+time="2023-04-15T03:33:01Z" level=info msg="NodeUnpublishVolume - VolumeId: csi-16c0ab68018efd3a4f540655a119f3af7955bdd0d3f8d0882ef749757e154d0d, TargetPath: /var/lib/kubelet/pods/47933acc-6ba8-4e11-b7ba-71837f6cd0ea/volumes/kubernetes.io~csi/oras-inline/mount)"
+time="2023-04-15T03:33:08Z" level=info msg="NodePublishVolume - VolumeId: csi-c53cdb53dc3045deec22489a48716a714dd6b2beef2dc2657234b317b92e93bb, Readonly: true, VolumeContext map[csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:e0dfd3c8-66e4-4a8c-8501-99cf50bb094e csi.storage.k8s.io/serviceAccount.name:default oras.artifact.reference:ghcr.io/singularityhub/github-ci:latest], PublishContext map[], VolumeCapability mount:<> access_mode:<mode:SINGLE_NODE_WRITER >  TargetPath /var/lib/kubelet/pods/e0dfd3c8-66e4-4a8c-8501-99cf50bb094e/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-04-15T03:33:08Z" level=info msg="Looking for volume context...."
+time="2023-04-15T03:33:08Z" level=info msg="map[csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:e0dfd3c8-66e4-4a8c-8501-99cf50bb094e csi.storage.k8s.io/serviceAccount.name:default oras.artifact.reference:ghcr.io/singularityhub/github-ci:latest]"
+time="2023-04-15T03:33:08Z" level=info msg="volume source directory:/pv_data/ghcr-io-singularityhub-github-ci-latest"
+time="2023-04-15T03:33:08Z" level=info msg="volume target directory:/var/lib/kubelet/pods/e0dfd3c8-66e4-4a8c-8501-99cf50bb094e/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-04-15T03:33:08Z" level=info msg="volume options:[ro]"
 ```
 
 </details>
@@ -113,7 +170,7 @@ spec:
         driver: csi.oras.land
         readOnly: true
         volumeAttributes:
-          container: "ghcr.io/singularityhub/github-ci:latest"
+          oras.artifact.reference: "ghcr.io/singularityhub/github-ci:latest"
 ```
 
 Let's shell into the pod and see if it's there!

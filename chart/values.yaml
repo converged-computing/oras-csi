@@ -1,7 +1,8 @@
 config:
+  csiRootDir: /
   driverWorkingDir: pv_data
-  k8SRootDir: /
-  mountCount: "1"
+  enforceNamespaces: "true"
+  handlersCount: "1"
   orasLogging: "true"
 kubernetesClusterDomain: cluster.local
 node:

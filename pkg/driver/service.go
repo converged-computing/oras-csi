@@ -8,9 +8,10 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	//	"github.com/kubernetes-csi/csi-test/v3/driver"
+	"github.com/converged-computing/oras-csi/pkg/utils"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/status"
@@ -32,6 +33,11 @@ var log logrus.Logger  // level for logrus
 // Init primarily sets logging levels for TBA services
 func Init(sanityTestRun bool, logLevel int, orasLog bool) error {
 	log = *logrus.New()
+
+	// Print the cool logo!
+	for _, line := range strings.Split(utils.GetLogo(), "\n") {
+		log.Info(strings.ReplaceAll(line, "\t", ""))
+	}
 	SanityTestRun = sanityTestRun
 	log.SetLevel(logrus.Level(logLevel))
 	OrasLog = orasLog
