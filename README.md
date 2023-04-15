@@ -52,10 +52,15 @@ I looked at a lot of examples to figure out the basic architecture I wanted to u
 - [moosefs-csi](https://github.com/moosefs/moosefs-csi) is what I used to learn and template the design here, also under an Apache 2.0 license. This is Copyright of Saglabs SA.
 
 
-#### License
+## License
 
-This work is licensed under the [Apache-2.0](https://github.com/converged-computing/flux-cloud/blob/main/LICENSE) license.
+HPCIC DevTools is distributed under the terms of the MIT license.
+All new contributions must be made under this license.
 
-SPDX-License-Identifier: Apache-2.0
+See [LICENSE](https://github.com/converged-computing/cloud-select/blob/main/LICENSE),
+[COPYRIGHT](https://github.com/converged-computing/cloud-select/blob/main/COPYRIGHT), and
+[NOTICE](https://github.com/converged-computing/cloud-select/blob/main/NOTICE) for details.
 
-LLNL-CODE-764420
+SPDX-License-Identifier: (MIT)
+
+LLNL-CODE- 842614
