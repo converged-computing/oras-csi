@@ -61,10 +61,11 @@ func NewOrasHandler(rootPath, pluginDataPath string, enforceNamespaces bool, nam
 	}
 
 	return &OrasHandler{
-		rootPath:       rootPath,
-		pluginDataPath: pluginDataPath,
-		name:           name,
-		hostMountPath:  path.Join(mntDir, fmt.Sprintf("%s%s", name, numSufix)),
+		rootPath:          rootPath,
+		pluginDataPath:    pluginDataPath,
+		name:              name,
+		hostMountPath:     path.Join(mntDir, fmt.Sprintf("%s%s", name, numSufix)),
+		enforceNamespaces: enforceNamespaces,
 	}
 }
 
@@ -281,6 +282,7 @@ func (mnt *OrasHandler) OrasPathToVolume(settings orasSettings) (string, error) 
 	artifactRoot := path.Join(pluginData, artifactDir)
 
 	// If we enforce a namespace, must go under that
+	log.Infof("Enforce namespaces: %s", mnt.enforceNamespaces)
 	if mnt.enforceNamespaces {
 		log.Info("Enforcing artifact namespace to be under %s", settings.namespace)
 		artifactRoot = path.Join(pluginData, settings.namespace, artifactDir)
