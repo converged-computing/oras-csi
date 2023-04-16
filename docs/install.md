@@ -79,10 +79,10 @@ kubectl apply -f deploy/csi-oras-config.yaml
 ```
 
 or the development config (along with your own kind cluster and registry) to build and deploy it first.
+You'll want to change the `image` registry to be one you control.
 
 ```bash
-/bin/bash ./hack/kind-create-cluster.sh
-kubectl apply -f deploy/driver-dev-csi-oras.yaml
+kubectl apply -f deploy/dev-driver.yaml
 kubectl apply -f deploy/csi-oras-config.yaml
 ```
 
