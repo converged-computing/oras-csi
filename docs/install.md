@@ -1,7 +1,8 @@
 # Install
 
 Note that you need the `--allow-privileged=true` flag set for both API server and kubelet (default value for kubelet is `true`).
-Also note that this is currently being developed on minikube, and we haven't gotten it working on kind (or interacting with
+
+> Also note that this is currently being developed on minikube, and we haven't gotten it working on kind (or interacting with
 a local registry yet).
 
 ## Options

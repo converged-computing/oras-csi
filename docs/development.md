@@ -29,14 +29,13 @@ And then to deploy (as an example):
 $ make dev DOCKER_REGISTRY=ghcr.io/myusername
 ```
 
-Note that this command is installing the "dev" version of the config in [deploy](../deploy),
+Note that this command is installing the "dev" version of the config in [deploy](https://github.com/converged-computing/oras-csi/tree/main/deploy),
 and you can tweak values there to change defaults. And then proceed with the regular usage tutorial in [post install](usage.md).
 
 ## Build Helm
 
-**warning** These charts are not fully working yet, and thus are stored under "hack"!
-The build commands are also commented out in the Makefile. Feel free to try working on them
-again if you choose (I will come back to them at some point to debug!)
+> **warning** These charts have only been tested with MiniKube
+
 I used helmify to generate the original charts, and then did a lot of manual fixes to namespaces,
 names, and other variables that I didn't want to be customized. This means that (for now) the helm charts need
 to be manually updated if any changes are added to the core in `deploy`. If you do this, please make a backup first
@@ -45,6 +44,6 @@ and then run!
 You can build new draft helm chart as follows:
 
 ```bash
-$ mv ./hack/charts ./hack/chart
+$ mv ./charts ./chart
 $ make helm
 ```
