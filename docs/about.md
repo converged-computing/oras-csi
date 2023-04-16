@@ -54,7 +54,7 @@ $ singularity run container.sif
 Hold me closer... tiny container :) :D
 ```
 
-In the above, we use the [oras cli](https://github.com/oras-project/oras) to pull, and the driver takes a similar approach, but using the [oras go sdk](https://github.com/oras-project/oras-go). If you are interested in this use case (running a container inside of a Kubernetes pod, which is possible with Singularity and appropriate permissions) you can use [this repostiory template](https://github.com/singularityhub/github-ci/) to reproduce the above container.
+In the above, we use the [oras cli](https://github.com/oras-project/oras) to pull, and the driver takes a similar approach, but using the [oras go sdk](https://github.com/oras-project/oras-go). If you are interested in this use case (running a container inside of a Kubernetes pod, which is possible with Singularity and appropriate permissions) you can use [this repository template](https://github.com/singularityhub/github-ci/) to reproduce the above container.
 
 ### Custom Image Assembly
 

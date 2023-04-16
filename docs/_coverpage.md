@@ -2,7 +2,7 @@
 
 # ORAS CSI <small>docs</small>
 
-- Container storage interace for Kubernetes
+- Container storage interface for Kubernetes
 - Componentized patching
 - Custom image assembly
 - Persistent assets for Indexed Jobs
