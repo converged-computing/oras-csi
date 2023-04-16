@@ -11,6 +11,7 @@ see the [install](install.md) documentation for that. Once you have the driver i
 make storage requests for pods by way of `volumeAttributes` for it. Here is an example pod with
 several options:
 
+
 ```yaml
 kind: Pod
 apiVersion: v1
@@ -31,12 +32,14 @@ spec:
         driver: csi.oras.land
         readOnly: true
         volumeAttributes:
-          oras.artifact.reference: "kind-registry:5000/github-ci:latest"
+          oras.artifact.reference: "ghcr.io/singularityhub/github-ci:latest"
           oras.options.plainhttp: true
           oras.options.insecure: true
 ```
 
-Note that the volume attributes are namespaced based on belonging to the driver (or possibly, if not). 
+In the above, we want to retrieve an artifact from the GitHub container registry, and extract
+the layers (or blobs) to `/mnt/oras` in the container. Although this particular image doesn't require it,
+we've added a few options for demonstration purposes only.
 
 ## Options
 
@@ -47,7 +50,7 @@ The full list of options you can define is provided in the table below.
 | oras.artifact.reference | The artifact unique resource identifier (URI) | true | unset |
 | oras.artifact.layers.mediatype | one or more (comma separated) media types to filter (include) | false | unset |
 | oras.options.plainhttp | Allow pull of an artifact using plain http | false | false |
-| oras.options.insecure | Allow insecure pull of an artifact | false | false |
+| oras.options.insecure | Allow insecure pull of an artifact (not implemented yet) | false | false |
 | oras.options.concurrency | Concurrency to use for oras handler download | false | 1 |
 | oras.options.pullalways | Always pull the artifact files afresh | false | false |
 
