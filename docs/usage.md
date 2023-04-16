@@ -59,7 +59,8 @@ artifact will be extracted. We will have more examples and tests for each of the
 
 ## Example
 
-Regardless of how you apply the configs during [install](install.md), you can see the containers (plugins on each node) as follows:
+Here we will provide a basic example to create a pod with a mounted artifact! We will add more
+tutorials as needed. Regardless of how you apply the configs during [install](install.md), you can see the containers (plugins on each node) as follows:
 
 ```bash
 $ kubectl get pods -n kube-system | grep csi-oras
@@ -148,6 +149,15 @@ time="2023-04-15T03:33:08Z" level=info msg="volume options:[ro]"
 ```
 
 </details>
+
+Note that by default, `enforceNamespaces` is set to true, meaning that the artifacts are stored on the driver and organized by namespace.
+If you disable this mode (not the default of the driver), the artifacts will be shared across namespaces, something you should do with
+caution only if you trust users and applications between them. The diff below shows the change when you disable the default.
+
+```diff
+- time="2023-04-16T23:31:43Z" level=info msg="volume source directory:/pv_data/default/ghcr-io-singularityhub-github-ci-latest"
++ time="2023-04-16T23:31:43Z" level=info msg="volume source directory:/pv_data/ghcr-io-singularityhub-github-ci-latest"
+```
 
 Since this is an ephermal volume, this means that we don't create PVC or PV, we simply ask for what we need
 in the pod. Note that the pod wants to pull the artifact `ghcr.io/singularityhub/github-ci:latest`

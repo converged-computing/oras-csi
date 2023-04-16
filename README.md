@@ -26,7 +26,6 @@ For documentation, see our early [docs](docs) folder.
  - [ ] add more kubernetes app labels?
  - [ ] test with kind, write up tutorial (https issue too)
  - [ ] add concept of cleanup (on level of CSIDriver and pod?)
- - [ ] implement namespaced storage
  - [ ] what about more customization to pull (e.g., pull if newer?)
  - [ ] everything must be tested, with tested examples
  - [ ] custom naming / locations for mount? Or should be handled by app?
