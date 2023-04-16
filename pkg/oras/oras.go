@@ -154,6 +154,7 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 	log.Infof("Preparing to pull from remote repository: %s", settings.reference)
 	ctx := context.Background()
 	repo, err := remote.NewRepository(settings.reference)
+	log.Infof("Plain http:", settings.optionsPlainHttp)
 	repo.PlainHTTP = settings.optionsPlainHttp
 	if err != nil {
 		return err

@@ -1,6 +1,0 @@
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ include "chart.fullname" . }}-node-sa
-  labels:
-  {{- include "chart.labels" . | nindent 4 }}

@@ -1,6 +1,8 @@
 # Install
 
 Note that you need the `--allow-privileged=true` flag set for both API server and kubelet (default value for kubelet is `true`).
+Also note that this is currently being developed on minikube, and we haven't gotten it working on kind (or interacting with
+a local registry yet).
 
 ## Options
 
@@ -14,26 +16,26 @@ Whether you install via the helm chart or the included yaml configs, the followi
 | enforce_namespaces | Enforce unique artifacts across namespaces (tradeoff between node storage space and security) | "true" | 
 | oras_logging| Should driver log to csi_root_dir/driver_working_dir/logs directory? |  "true" |
 
-## Helm
+## Helm Install
 
 To install, you can use [helm](https://helm.sh): 
 
 ```bash
 $ git clone https://github.com/converged-computing/oras-csi
 $ cd oras-csi
-$ helm install oras-csi ./chart
+$ helm install oras-csi ./charts
 ```
 
 Note that for helm, you can see the values for the chart as follows:
 
 ```bash
-$ helm show values ./chart
+$ helm show values ./charts
 ```
 
 And then set any of them for an install:
 
 ```bash
-$ helm install config.orasLogging="false" oras-csi ./chart
+$ helm install --set config.orasLogging="false" oras-csi ./charts
 ```
 
 Or you can install directly from GitHub packages (an OCI registry):
@@ -50,7 +52,7 @@ Pulled: ghcr.io/converged-computing/oras-csi-helm/chart:0.1.0
 And install!
 
 ```bash
-$ helm install chart-0.1.0.tgz 
+$ helm install oras-oci chart-0.1.0.tgz 
 ```
 ```console
 NAME: oras-csi
@@ -61,7 +63,9 @@ REVISION: 1
 TEST SUITE: None
 ```
 
-or if you have the repository handy, you can customize the [deploy/kubernetes/csi-oras-config.yaml](../deploy/kubernetes/csi-config.yaml)  and then do:
+## Config Install
+
+You can also install from a config in [deploy](../deploy).
 
 ```bash
 $ make install
@@ -70,9 +74,18 @@ $ make install
 which is the equivalent of:
 
 ```bash
-kubectl apply -f deploy/kubernetes/csi-oras.yaml
-kubectl apply -f deploy/kubernetes/csi-oras-config.yaml
+kubectl apply -f deploy/driver-csi-oras.yaml
+kubectl apply -f deploy/csi-oras-config.yaml
 ```
 
-When you are done, see [post install usage](usage.md) for interacting with your driver
+or the development config (along with your own kind cluster and registry) to build and deploy it first.
+
+```bash
+/bin/bash ./hack/kind-create-cluster.sh
+kubectl apply -f deploy/driver-dev-csi-oras.yaml
+kubectl apply -f deploy/csi-oras-config.yaml
+```
+
+Either way, if you have the repository handy, you can customize the [deploy/csi-oras-config.yaml](../deploy/csi-oras-config.yaml) to 
+change any defaults. When you are done, see [post install usage](usage.md) for interacting with your driver
 and using it.

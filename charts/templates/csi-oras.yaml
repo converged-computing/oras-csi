@@ -1,0 +1,260 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: CSIDriver
+metadata:
+  name: csi.oras.land
+  labels:
+    app.kubernetes.io/part-of: csi-driver-oras
+  {{- include "chart.labels" . | nindent 4 }}
+spec:
+  attachRequired: false
+  podInfoOnMount: true
+  volumeLifecycleModes:
+  - Ephemeral
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart.fullname" . }}-config
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/part-of: csi-driver-oras
+  {{- include "chart.labels" . | nindent 4 }}
+data:
+  csi_root_dir: {{ .Values.config.csiRootDir | quote }}
+  driver_working_dir: {{ .Values.config.driverWorkingDir | quote }}
+  enforce_namespaces: {{ .Values.config.enforceNamespaces | quote }}
+  handlers_count: {{ .Values.config.handlersCount | quote }}
+  oras_logging: {{ .Values.config.orasLogging | quote }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  namespace: kube-system
+  name: oras-storage
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: csi.oras.land
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: csi-oras-node-sa
+  namespace: kube-system
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-provisioner-role
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-attacher-role
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["csinodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments"]
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments/status"]
+    verbs: ["patch"]
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-resizer-role
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims/status"]
+    verbs: ["update", "patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-driver-registrar-node-role
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: csi-oras-driver-registrar-node-binding
+  labels:
+  {{- include "chart.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: csi-oras-node-sa
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-oras-driver-registrar-node-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: csi-oras-node
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/part-of: csi-driver-oras
+  {{- include "chart.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: csi-oras-node
+    {{- include "chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app: csi-oras-node
+        app.kubernetes.io/part-of: csi-driver-oras
+        role: csi-oras
+      {{- include "chart.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - args:
+        - --v=5
+        - --csi-address=$(ADDRESS)
+        - --kubelet-registration-path=$(DRIVER_REG_SOCK_PATH)
+        env:
+        - name: ADDRESS
+          value: {{ quote .Values.node.driverRegistrar.env.address }}
+        - name: DRIVER_REG_SOCK_PATH
+          value: {{ quote .Values.node.driverRegistrar.env.driverRegSockPath }}
+        - name: KUBE_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: {{ .Values.node.driverRegistrar.image.repository }}:{{ .Values.node.driverRegistrar.image.tag | default .Chart.AppVersion }}
+        name: driver-registrar
+        resources: {}
+        volumeMounts:
+        - mountPath: /csi/
+          name: plugin-dir
+        - mountPath: /registration/
+          name: registration-dir
+      - args:
+        - --mode=node
+        - --csi-endpoint=$(CSI_ENDPOINT)
+        - --node-id=$(NODE_ID)
+        - --root-dir=$(ROOT_DIR)
+        - --plugin-data-dir=$(WORKING_DIR)
+        - --mount-points-count=$(HANDLERS_COUNT)
+        - --oras-logging=$(ORAS_LOGGING)
+        - --enforce-namespaces=$(ENFORCE_NAMESPACES)
+        env:
+        - name: CSI_ENDPOINT
+          value: {{ quote .Values.node.csiOrasPlugin.env.csiEndpoint }}
+        - name: NODE_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: ENFORCE_NAMESPACES
+          valueFrom:
+            configMapKeyRef:
+              key: enforce_namespaces
+              name: {{ include "chart.fullname" . }}-config
+
+        - name: ROOT_DIR
+          valueFrom:
+            configMapKeyRef:
+              key: csi_root_dir
+              name: {{ include "chart.fullname" . }}-config
+        - name: WORKING_DIR
+          valueFrom:
+            configMapKeyRef:
+              key: driver_working_dir
+              name: {{ include "chart.fullname" . }}-config
+        - name: HANDLERS_COUNT
+          valueFrom:
+            configMapKeyRef:
+              key: handlers_count
+              name: {{ include "chart.fullname" . }}-config
+        - name: ORAS_LOGGING
+          valueFrom:
+            configMapKeyRef:
+              key: oras_logging
+              name: {{ include "chart.fullname" . }}-config
+        - name: KUBERNETES_CLUSTER_DOMAIN
+          value: {{ quote .Values.kubernetesClusterDomain }}
+        image: {{ .Values.node.csiOrasPlugin.image.repository }}:{{ .Values.node.csiOrasPlugin.image.tag | default .Chart.AppVersion }}
+        imagePullPolicy: {{ .Values.node.csiOrasPlugin.imagePullPolicy }}
+        name: csi-oras-plugin
+        resources: {}
+        securityContext: {{- toYaml .Values.node.csiOrasPlugin.containerSecurityContext | nindent 10 }}
+        volumeMounts:
+        - mountPath: /csi
+          name: plugin-dir
+        - mountPath: /var/lib/kubelet
+          mountPropagation: Bidirectional
+          name: pods-mount-dir
+        - mountPath: /dev
+          name: device-dir
+      hostNetwork: true
+      priorityClassName: system-node-critical
+      serviceAccount: csi-oras-node-sa
+      volumes:
+      - hostPath:
+          path: /var/lib/kubelet/plugins_registry/
+          type: Directory
+        name: registration-dir
+      - hostPath:
+          path: /var/lib/kubelet/plugins/csi.oras.land
+          type: DirectoryOrCreate
+        name: plugin-dir
+      - hostPath:
+          path: /var/lib/kubelet
+          type: Directory
+        name: pods-mount-dir
+      - hostPath:
+          path: /dev
+        name: device-dir
