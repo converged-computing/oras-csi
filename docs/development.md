@@ -1,59 +1,50 @@
 # Development
 
-For the tutorial below, we are using minikube, e.g., `minikube start`. A kind tutorial will come soon.
+For the tutorial below, we are using minikube. Building with kind is not
+supported yet, because I'm not sure we can test CSI Drivers outside of VMs. Thus, for the time being,
+the commands assume you are using minikube! 
 
 ## Quick Start 
 
-After developing local files, we have a single command to uninstall the plugin, build the binary, package it in
-a container, and push to a registry. You should check the `Makefile` first an ensure that you are targeting
-a registry you have push permissions for!
+Create a minikube cluster:
 
 ```bash
-$ make dev
+$ minikube start
 ```
 
-and then the command installs the configs in [deploy](deploy). You should inspect this logic in the [Makefile](Makefile) first.
+We have a single command to uninstall the plugin, build the binary, package it in
+a container, and push to this registry. You'll want to use a registry you have write permission
+to, and that minikube can pull from. First, change the image: directive
+in the development yaml `deploy/dev-driver.yaml` to your image:
 
-## Detailed Start
+```diff
+- image: ghcr.io/converged-computing/oras-csi-plugin:0.1.0:dev
++ image: ghcr.io/myusername/oras-csi-plugin:0.1.0:dev
+```
 
-Usually you'll want to develop local files, and then build the binary, package the container,
-and push to a registry:
+You should only change the registry name, and not the repository name or tag.
+And then to deploy (as an example):
 
 ```bash
-$ make
-$ make build-dev
-$ make push-dev
+$ make dev DOCKER_REGISTRY=ghcr.io/myusername
 ```
 
-When you are ready, apply the configuration file:
-
-```bash
-$ kubectl apply -f deploy/kubernetes/csi-oras-config.yaml
-```
-
-This is the config map if you want to inspect it:
-
-```bash
-$ kubectl describe cm -n kube-system csi-oras-config 
-$ kubectl get cm -n kube-system csi-oras-config 
-NAME              DATA   AGE
-csi-oras-config   5      20s
-```
-
-Then deploy the driver plugin with the CSI sidecar containers:
-
-```bash
-$ kubectl apply -f deploy/kubernetes/csi-oras.yaml
-```
-
-And then proceed with the regular usage tutorial in [post install](usage.md).
-
+Note that this command is installing the "dev" version of the config in [deploy](../deploy),
+and you can tweak values there to change defaults. And then proceed with the regular usage tutorial in [post install](usage.md).
 
 ## Build Helm
 
-You can build the helm chart as follows (recommended to delete first)
+**warning** These charts are not fully working yet, and thus are stored under "hack"!
+The build commands are also commented out in the Makefile. Feel free to try working on them
+again if you choose (I will come back to them at some point to debug!)
+I used helmify to generate the original charts, and then did a lot of manual fixes to namespaces,
+names, and other variables that I didn't want to be customized. This means that (for now) the helm charts need
+to be manually updated if any changes are added to the core in `deploy`. If you do this, please make a backup first
+and then run!
+
+You can build new draft helm chart as follows:
 
 ```bash
-$ rm -rf ./chart
+$ mv ./hack/charts ./hack/chart
 $ make helm
 ```
