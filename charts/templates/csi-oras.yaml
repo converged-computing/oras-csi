@@ -188,7 +188,7 @@ spec:
         - --node-id=$(NODE_ID)
         - --root-dir=$(ROOT_DIR)
         - --plugin-data-dir=$(WORKING_DIR)
-        - --mount-points-count=$(HANDLERS_COUNT)
+        - --handlers-count=$(HANDLERS_COUNT)
         - --oras-logging=$(ORAS_LOGGING)
         - --enforce-namespaces=$(ENFORCE_NAMESPACES)
         env:

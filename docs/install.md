@@ -39,6 +39,17 @@ And then set any of them for an install:
 $ helm install --set config.orasLogging="false" oras-csi ./charts
 ```
 
+Here is a more complete example to build your own image, load into MiniKube, and install with helm:
+
+```bash
+$ make build DOCKER_REGISTRY=ghcr.io/github-actions
+$ minikube image load ghcr.io/github-actions/oras-csi-plugin:latest
+$ helm install --set node.csiOrasPlugin.image.repository="ghcr.io/github-actions/oras-csi-plugin" \
+               --set node.csiOrasPlugin.image.tag="latest" \
+               --set node.csiOrasPlugin.imagePullPolicy="Never" \
+               oras-csi ./charts 
+```
+
 Or you can install directly from GitHub packages (an OCI registry):
 
 ```

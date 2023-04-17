@@ -13,5 +13,33 @@ jobs:
       uses: crate-ci/typos@7ad296c72fa8265059cc03d1eda562fbdfcd6df2 # v1.9.0
       with:
         files: ./README.md ./docs/*.md
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clone the code
+      uses: actions/checkout@v3
+    - name: Setup Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ^1.18
+    - name: Start minikube
+      uses: medyagh/setup-minikube@697f2b7aaed5f70bf2a94ee21a4ec3dde7b12f92 # v0.0.9
+    - name: Build Dev Image
+      run: make build DOCKER_REGISTRY=ghcr.io/github-actions
+    - name: Setup BATS
+      uses: mig4/setup-bats@af9a00deb21b5d795cabfeaa8d9060410377686d
+      with:
+        bats-version: 1.4.1
+    - name: Install CSI Driver
+      run: |
+        export SHELL=/bin/bash
+        eval $(minikube -p minikube docker-env)
+        minikube image load ghcr.io/github-actions/oras-csi-plugin:latest
+        helm install --set node.csiOrasPlugin.image.repository="ghcr.io/github-actions/oras-csi-plugin" \
+                     --set node.csiOrasPlugin.image.tag="latest" \
+                     --set node.csiOrasPlugin.imagePullPolicy="Never" \
+                     oras-csi ./charts 
 
-  # TODO add unit-tests
+    - name: Run tests with Bats
+      run: make test

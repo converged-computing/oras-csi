@@ -1,14 +1,9 @@
 DRIVER_VERSION ?= 0.1.0
 DEVTAG=$(DRIVER_VERSION)-dev
 HELM_PLUGIN_NAME=oras-csi
-
+BATS := bats
 NAME=oras-csi-plugin
 DOCKER_REGISTRY=ghcr.io/converged-computing
-
-## Location to install dependencies to
-LOCALBIN ?= $(shell pwd)/bin
-$(LOCALBIN):
-	mkdir -p $(LOCALBIN)
 
 .PHONY: help
 help: ## Generates help for all targets
@@ -18,6 +13,10 @@ ready: clean compile ## Clean pods and compiles the driver
 publish: uninstall compile build push install ## Publish DRIVER_VERSION
 dev: uninstall-dev compile build-dev push-dev install-dev ## Publish DEVTAG
 dev-helm: uninstall-helm compile build-dev push-dev install-helm ## Publish with custom DOCKER_REGISTRY and DEVTAG
+
+.PHONY: test
+test: # Run basic end to end tests with bats
+	bats -t -T test/bats/e2e.bats
 
 uninstall: ## Uninstalls the plugin from the cluster
 	@echo "==> Uninstalling plugin"
@@ -72,12 +71,22 @@ clean: ## Deletes driver
 
 .PHONY: clean
 
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
 uninstall-helm: ## Uninstalls the plugin using helm
 	@echo "==> Uninstalling helm plugin"
 	helm uninstall $(HELM_PLUGIN_NAME) || true
 
-install-helm: compile
+install-helm: compile ## Install plugin using helm
 	helm install --set node.csiOrasPlugin.image.repository="$(DOCKER_REGISTRY)/oras-csi-plugin" --set node.csiOrasPlugin.image.tag="$(DEVTAG)" $(HELM_PLUGIN_NAME) ./charts
+
+# We will eventually want to add this
+# .PHONY: sanity-test
+# sanity-test: # RUN CSI sanity checks, assumes cluster is running with driver installed
+#	go test -v ./test/sanity -ginkgo.skip=Controller\|should.work\|NodeStageVolume
 
 # Helmify was only used for original base templates
 
