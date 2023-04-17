@@ -5,11 +5,6 @@ BATS := bats
 NAME=oras-csi-plugin
 DOCKER_REGISTRY=ghcr.io/converged-computing
 
-## Location to install dependencies to
-LOCALBIN ?= $(shell pwd)/bin
-$(LOCALBIN):
-	mkdir -p $(LOCALBIN)
-
 .PHONY: help
 help: ## Generates help for all targets
 	@grep -E '^[^#[:space:]].*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
@@ -76,11 +71,16 @@ clean: ## Deletes driver
 
 .PHONY: clean
 
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
 uninstall-helm: ## Uninstalls the plugin using helm
 	@echo "==> Uninstalling helm plugin"
 	helm uninstall $(HELM_PLUGIN_NAME) || true
 
-install-helm: compile
+install-helm: compile ## Install plugin using helm
 	helm install --set node.csiOrasPlugin.image.repository="$(DOCKER_REGISTRY)/oras-csi-plugin" --set node.csiOrasPlugin.image.tag="$(DEVTAG)" $(HELM_PLUGIN_NAME) ./charts
 
 # We will eventually want to add this
