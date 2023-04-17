@@ -10,16 +10,16 @@ import (
 
 func main() {
 	var (
-		mode              = flag.String("mode", "unspecified", "")
-		csiEndpoint       = flag.String("csi-endpoint", "unix:///var/lib/csi/sockets/pluginproxy/csi.sock", "CSI endpoint")
-		nodeId            = flag.String("node-id", "", "")
-		rootDir           = flag.String("root-dir", "/", "")
-		pluginDataDir     = flag.String("plugin-data-dir", "/", "")
-		handlersCount     = flag.Int("mount-points-count", 1, "")
-		sanityTestRun     = flag.Bool("sanity-test-run", false, "")
-		logLevel          = flag.Int("log-level", 5, "")
-		orasLog           = flag.Bool("oras-logging", true, "")
-		enforceNamespaces = flag.Bool("enforce-namespaces", true, "")
+		mode              = flag.String("mode", driver.DefaultMode, "")
+		csiEndpoint       = flag.String("csi-endpoint", driver.DefaultCSISocket, "CSI endpoint")
+		nodeId            = flag.String("node-id", driver.DefaultNodeID, "")
+		rootDir           = flag.String("root-dir", driver.DefaultRootDir, "")
+		pluginDataDir     = flag.String("plugin-data-dir", driver.DefaultPluginDataDir, "")
+		handlersCount     = flag.Int("handlers-count", driver.DefaultHandlersCount, "")
+		sanityTestRun     = flag.Bool("sanity-test-run", driver.DefaultSanityTestRun, "")
+		logLevel          = flag.Int("log-level", driver.DefaultLogLevel, "")
+		orasLog           = flag.Bool("oras-logging", oras.DefaultEnableLogging, "")
+		enforceNamespaces = flag.Bool("enforce-namespaces", driver.DefaultEnforceNamespaces, "")
 	)
 	flag.Parse()
 
@@ -28,7 +28,7 @@ func main() {
 	oras.Init(*logLevel)
 
 	if *sanityTestRun {
-		log.Infof("=============== SANITY TEST ===============")
+		log.Infof("<********** Sanity Test Run **********>")
 	}
 	log.Infof("Preparing artifact cache (mode: %s; node-id: %s; root-dir: %s; plugin-data-dir: %s enforce-namespaces: %s)",
 		*mode, *nodeId, *rootDir, *pluginDataDir, *enforceNamespaces)
