@@ -27,7 +27,7 @@ func pullBlob(repo *remote.Repository, blobRef string, filename string) (fetchEr
 	defer readCloser.Close()
 
 	// Write the blob to a file
-	log.Info("OCI: Writing %s to %s", desc.Digest.String(), filename)
+	log.Infof("OCI: Writing %s to %s", desc.Digest.String(), filename)
 	file, err := os.Create(filename)
 	if err != nil {
 		return err

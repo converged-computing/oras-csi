@@ -7,14 +7,16 @@ import (
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"oras.land/oras-go/v2/registry"
 )
 
 // Oras Settings come from volume attributes
 type orasSettings struct {
 	namespace    string
-	reference    string
+	reference    string // Fully qualified reference with registry and no tag
 	mediaTypes   []string
 	rawReference string
+	registry     string
 
 	// ORAS options
 	optionsPlainHttp   bool
@@ -24,18 +26,33 @@ type orasSettings struct {
 	tag                string
 }
 
-// parseContainer URI into a container and a tag
-func (settings *orasSettings) parseReference(reference string) {
-	container := strings.TrimPrefix(reference, "oras://")
+// parseContainer URI into a reference(registry+repository) and a tag
+func (settings *orasSettings) parseReference(reference string) error {
+	artifactRef := strings.TrimPrefix(reference, "oras://")
 	tag := "latest"
-	if strings.Contains(container, ":") {
-		parts := strings.Split(container, ":")
-		container = parts[0]
-		tag = parts[1]
+
+	// if the reference doesn't have a / then add a docker.io/library prefix
+	// this is to support the docker.io library that is implicit
+	// in docker pull commands
+	if !strings.Contains(artifactRef, "/") {
+		artifactRef = "docker.io/library/" + artifactRef
 	}
+
+	ref, err := registry.ParseReference(artifactRef)
+	if err != nil {
+		return err
+	}
+
+	// Oras uses the ref to mean digest or tag
+	if ref.Reference != "" {
+		tag = ref.Reference
+	}
+
 	settings.rawReference = reference
-	settings.reference = container
+	settings.registry = ref.Registry
+	settings.reference = ref.Registry + "/" + ref.Repository
 	settings.tag = tag
+	return nil
 }
 
 // NewSettings parses volume attributes and returns the settings
@@ -50,7 +67,10 @@ func NewSettings(volumeContext map[string]string) (orasSettings, error) {
 	}
 
 	// Split the reference into first part, and tag
-	settings.parseReference(reference)
+	err := settings.parseReference(reference)
+	if err != nil {
+		return settings, status.Error(codes.InvalidArgument, fmt.Sprintf("issue parsing oras.artifact.reference %s", err))
+	}
 
 	// oras.options.plainhttp
 	value, found := volumeContext["oras.options.plainhttp"]
