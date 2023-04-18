@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 # This is run relative to the root
-EXAMPLES_DIR=examples/kubernetes/pod
+EXAMPLES_DIR=examples/basic/pod
 SLEEP_TIME=10
 
 @test "basic pod test" {
