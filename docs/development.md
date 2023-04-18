@@ -1,7 +1,8 @@
 # Development
 
-For the tutorial below, we are using MiniKube. You can find instructions for a kind
-development setup [here](https://github.com/converged-computing/oras-csi/tree/main/examples/kind).
+For the tutorial below, we are using minikube. Building with kind is not
+supported yet, because I'm not sure we can test CSI Drivers outside of VMs. Thus, for the time being,
+the commands assume you are using minikube! 
 
 ## Quick Start 
 
