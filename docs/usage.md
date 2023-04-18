@@ -57,8 +57,15 @@ The full list of options you can define is provided in the table below.
 Of the above, the only required is the reference. When you provide only a reference, the entire
 artifact will be extracted. We will have more examples and tests for each of the above soon!
 
-## Example
+## Examples
 
+The following full examples are provided alongside the repository:
+
+ - [basic/pod](https://github.com/converged-computing/oras-csi/tree/main/examples/basic/pod): the tutorial here, along with a basic mediaType filter
+ - [kind](https://github.com/converged-computing/oras-csi/tree/main/examples/kind): build and deploy to a local registry using kind
+ - [java](https://github.com/converged-computing/oras-csi/tree/main/examples/java): assemble a functioning Java app from base and app images
+
+For each of the examples above, follow the respective links.
 Here we will provide a basic example to create a pod with a mounted artifact! We will add more
 tutorials as needed. Regardless of how you apply the configs during [install](install.md), you can see the containers (plugins on each node) as follows:
 
@@ -108,7 +115,7 @@ We plan to make this customizable when we add a helm chart!
 Let's try creating a pod that has a volume using our storage class:
 
 ```bash
-$ kubectl apply -f examples/kubernetes/pod/pod.yaml
+$ kubectl apply -f examples/basic/pod/pod.yaml
 ```
 
 Note that if you check the output of the csi plugin now, it should be a lot more verbose.
@@ -200,7 +207,7 @@ Yay! Try copying your pod into a second (identical one) and creating a mount of 
 (we have provided this second pod file to make it easy):
 
 ```bash
-$ kubectl apply -f examples/kubernetes/pod/second-pod.yaml
+$ kubectl apply -f examples/basic/pod/second-pod.yaml
 $ kubectl exec -it my-second-csi-app-inline -- bash
 ```
 ```console
@@ -227,8 +234,8 @@ test deletion. Deletion should run an unmount command, but should not delete any
 To delete:
 
 ```bash
-$ kubectl delete -f examples/kubernetes/pod/pod.yaml
-$ kubectl delete -f examples/kubernetes/pod/second-pod.yaml
+$ kubectl delete -f examples/basic/pod/pod.yaml
+$ kubectl delete -f examples/basic/pod/second-pod.yaml
 ```
 
 These RPC actions hit the "NodeUnpublishVolume" endpoint and (I've noticed) at least for MiniKube they take
@@ -254,7 +261,7 @@ container.sif
 Now we can theoretically create a pod again, and that same container.sif should be used (you should see the message about it already existing):
 
 ```bash
-$ kubectl apply -f examples/kubernetes/pod/pod.yaml
+$ kubectl apply -f examples/basic/pod/pod.yaml
 ```
 ```console
 time="2023-04-12T20:52:16Z" level=info msg="Artifact root already exists, no need to re-create!"
@@ -266,6 +273,6 @@ can imagine using the same reference that has changed in the registry that you w
 Finally, clean up the whole thing and pod again!
 
 ```bash
-$ kubectl delete -f examples/kubernetes/pod/pod.yaml
+$ kubectl delete -f examples/basic/pod/pod.yaml
 $ make clean
 ```
