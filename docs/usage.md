@@ -108,7 +108,7 @@ We plan to make this customizable when we add a helm chart!
 Let's try creating a pod that has a volume using our storage class:
 
 ```bash
-$ kubectl apply -f examples/kubernetes/pod/pod.yaml
+$ kubectl apply -f examples/basic/pod/pod.yaml
 ```
 
 Note that if you check the output of the csi plugin now, it should be a lot more verbose.
@@ -200,7 +200,7 @@ Yay! Try copying your pod into a second (identical one) and creating a mount of 
 (we have provided this second pod file to make it easy):
 
 ```bash
-$ kubectl apply -f examples/kubernetes/pod/second-pod.yaml
+$ kubectl apply -f examples/basic/pod/second-pod.yaml
 $ kubectl exec -it my-second-csi-app-inline -- bash
 ```
 ```console
@@ -227,8 +227,8 @@ test deletion. Deletion should run an unmount command, but should not delete any
 To delete:
 
 ```bash
-$ kubectl delete -f examples/kubernetes/pod/pod.yaml
-$ kubectl delete -f examples/kubernetes/pod/second-pod.yaml
+$ kubectl delete -f examples/basic/pod/pod.yaml
+$ kubectl delete -f examples/basic/pod/second-pod.yaml
 ```
 
 These RPC actions hit the "NodeUnpublishVolume" endpoint and (I've noticed) at least for MiniKube they take
@@ -254,7 +254,7 @@ container.sif
 Now we can theoretically create a pod again, and that same container.sif should be used (you should see the message about it already existing):
 
 ```bash
-$ kubectl apply -f examples/kubernetes/pod/pod.yaml
+$ kubectl apply -f examples/basic/pod/pod.yaml
 ```
 ```console
 time="2023-04-12T20:52:16Z" level=info msg="Artifact root already exists, no need to re-create!"
@@ -266,6 +266,6 @@ can imagine using the same reference that has changed in the registry that you w
 Finally, clean up the whole thing and pod again!
 
 ```bash
-$ kubectl delete -f examples/kubernetes/pod/pod.yaml
+$ kubectl delete -f examples/basic/pod/pod.yaml
 $ make clean
 ```
