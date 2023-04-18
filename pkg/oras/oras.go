@@ -155,7 +155,7 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 	log.Infof("Preparing to pull from remote repository: %s", settings.reference)
 	ctx := context.Background()
 	repo, err := remote.NewRepository(settings.reference)
-	log.Infof("Plain http:", settings.optionsPlainHttp)
+	log.Infof("Plain http: %t", settings.optionsPlainHttp)
 	repo.PlainHTTP = settings.optionsPlainHttp
 	if err != nil {
 		return err
@@ -193,7 +193,7 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 	total := len(manifest.Layers)
 	extractCount := 0
 	for i, layer := range manifest.Layers {
-		log.Infof("Pulling %s, %s of %s", layer.Digest, i, total)
+		log.Infof("Pulling %s, %d of %d", layer.Digest, i, total)
 		filename, found := layer.Annotations["org.opencontainers.image.title"]
 
 		// This shouldn't happen, but you never know!
@@ -282,9 +282,9 @@ func (mnt *OrasHandler) OrasPathToVolume(settings orasSettings) (string, error) 
 	artifactRoot := path.Join(pluginData, artifactDir)
 
 	// If we enforce a namespace, must go under that
-	log.Infof("Enforce namespaces: %s", mnt.enforceNamespaces)
+	log.Infof("Enforce namespaces: %t", mnt.enforceNamespaces)
 	if mnt.enforceNamespaces {
-		log.Info("Enforcing artifact namespace to be under %s", settings.namespace)
+		log.Infof("Enforcing artifact namespace to be under %s", settings.namespace)
 		artifactRoot = path.Join(pluginData, settings.namespace, artifactDir)
 	}
 

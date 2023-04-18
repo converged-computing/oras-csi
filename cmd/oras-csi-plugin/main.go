@@ -30,7 +30,7 @@ func main() {
 	if *sanityTestRun {
 		log.Infof("<********** Sanity Test Run **********>")
 	}
-	log.Infof("Preparing artifact cache (mode: %s; node-id: %s; root-dir: %s; plugin-data-dir: %s enforce-namespaces: %s)",
+	log.Infof("Preparing artifact cache (mode: %s; node-id: %s; root-dir: %s; plugin-data-dir: %s enforce-namespaces: %t)",
 		*mode, *nodeId, *rootDir, *pluginDataDir, *enforceNamespaces)
 
 	var srv driver.Service
@@ -41,16 +41,16 @@ func main() {
 	case "node":
 		srv, err = driver.NewNodeService(*rootDir, *pluginDataDir, *nodeId, *handlersCount, *enforceNamespaces)
 		if err != nil {
-			log.Error("main - couldn't create node service. Error: %s", err.Error())
+			log.Errorf("main - couldn't create node service. Error: %s", err.Error())
 			return
 		}
 	default:
-		log.Error("main - unrecognized mode = %s", *mode)
+		log.Errorf("main - unrecognized mode = %s", *mode)
 		return
 	}
 
 	// This is the Identity service - "hello I am the ORAS csi!"
 	if err = driver.StartService(&srv, *mode, *csiEndpoint); err != nil {
-		log.Error("main - couldn't start service %s", err.Error())
+		log.Errorf("main - couldn't start service %s", err.Error())
 	}
 }
