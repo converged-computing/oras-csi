@@ -1,0 +1,21 @@
+kind: Pod
+apiVersion: v1
+metadata:
+  name: my-csi-java-app
+spec:
+  containers:
+    - name: my-java-app
+      image: localhost:5001/java-app-base:1.0
+      command: [ "java", "-jar", "/app/HelloWorldServer.jar" ]
+      volumeMounts:
+      - mountPath: "/app"
+        name: oras-inline
+  volumes:
+    - name: oras-inline
+      csi:
+        driver: csi.oras.land
+        readOnly: true
+        volumeAttributes:
+          oras.artifact.reference: "kind-registry:5000/java-app:1.0"
+          oras.options.plainhttp: "true"
+          oras.options.insecure: "true"
