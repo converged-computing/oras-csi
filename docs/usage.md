@@ -57,8 +57,15 @@ The full list of options you can define is provided in the table below.
 Of the above, the only required is the reference. When you provide only a reference, the entire
 artifact will be extracted. We will have more examples and tests for each of the above soon!
 
-## Example
+## Examples
 
+The following full examples are provided alongside the repository:
+
+ - [basic/pod](https://github.com/converged-computing/oras-csi/tree/main/examples/basic/pod): the tutorial here, along with a basic mediaType filter
+ - [kind](https://github.com/converged-computing/oras-csi/tree/main/examples/kind): build and deploy to a local registry using kind
+ - [java](https://github.com/converged-computing/oras-csi/tree/main/examples/java): assemble a functioning Java app from base and app images
+
+For each of the examples above, follow the respective links.
 Here we will provide a basic example to create a pod with a mounted artifact! We will add more
 tutorials as needed. Regardless of how you apply the configs during [install](install.md), you can see the containers (plugins on each node) as follows:
 
