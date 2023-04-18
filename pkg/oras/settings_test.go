@@ -71,6 +71,14 @@ func TestReferenceParse(t *testing.T) {
 			expectedTag:       "latest",
 			wantErr:           false,
 		},
+		{
+			name:              "digest",
+			ref:               "localhost:5001/artifact@sha256:5d6742ff0b10c1196202765dafb43275259bcbdbd3868c19ba1d19476c088867",
+			expectedRegistry:  "localhost:5001",
+			expectedReference: "localhost:5001/artifact",
+			expectedTag:       "sha256:5d6742ff0b10c1196202765dafb43275259bcbdbd3868c19ba1d19476c088867",
+			wantErr:           false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
