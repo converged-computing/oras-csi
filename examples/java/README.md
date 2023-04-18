@@ -4,7 +4,10 @@ The java appliation is a simple java application that will use the oras-csi driv
 The application creates a simple web listening on port 8080 and return "Hello World" when you access the root path.
 
 The sample uses a local registry `localhost:5001` to push the image to. You can change the registry in the `Makefile` and `pod.yaml` files.
-For setup using kind follow - https://github.com/sajayantony/oras-csi/tree/kind-hack/examples/kind#run-oras-csi-driver-in-kind
+For setup using kind follow [our kind setup example](../kind). WHen you've created the kind cluster and installed the driver, e.g.,:
+
+```bash
+```
 
 # Build and push the base image
 
