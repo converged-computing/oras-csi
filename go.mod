@@ -1,4 +1,4 @@
-module github.com/converged-computing/oras-csi
+module github.com/billy-playground/oras-csi
 
 go 1.18
 
