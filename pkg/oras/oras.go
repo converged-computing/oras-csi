@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync/atomic"
 
 	"github.com/sirupsen/logrus"
 
@@ -39,12 +40,13 @@ func Init(logLevel int) error {
 }
 
 type OrasHandler struct {
-	name              string // handler name
-	testRun           bool   // is this just a test run?
-	rootPath          string // oras root path
-	pluginDataPath    string // plugin data path (inside rootPath)
-	hostMountPath     string // host mount path
-	enforceNamespaces bool   // do not allow artifacts to cross namespaces
+	name              string       // handler name
+	testRun           bool         // is this just a test run?
+	rootPath          string       // oras root path
+	pluginDataPath    string       // plugin data path (inside rootPath)
+	hostMountPath     string       // host mount path
+	pullCnt           atomic.Int64 // test pull cnt
+	enforceNamespaces bool         // do not allow artifacts to cross namespaces
 }
 
 // NewOrasHandler creates a new oras handles to mount a container URI, pulled once
@@ -66,6 +68,7 @@ func NewOrasHandler(rootPath, pluginDataPath string, enforceNamespaces bool, nam
 		name:              name,
 		hostMountPath:     path.Join(mntDir, fmt.Sprintf("%s%s", name, numSufix)),
 		enforceNamespaces: enforceNamespaces,
+		pullCnt:           atomic.Int64{},
 	}
 }
 
@@ -115,6 +118,8 @@ func (mnt *OrasHandler) ensureArtifact(artifactRoot string, settings orasSetting
 
 	// Does it already exist?
 	_, err := os.Stat(artifactRoot)
+	new := mnt.pullCnt.Add(1)
+	log.Info("Artifact pull counting", new)
 
 	// Pull if it doesn't exist, or user has requested a force re-pull
 	if settings.optionsPullAlways || errors.Is(err, os.ErrNotExist) {
