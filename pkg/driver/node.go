@@ -56,7 +56,11 @@ func NewNodeService(rootPath, pluginDataPath, nodeId string, handlersCount int, 
 	// Create N handlers per node
 	handlers := make([]*handler.OrasHandler, handlersCount)
 	for i := 0; i < handlersCount; i++ {
-		handlers[i] = handler.NewOrasHandler(rootPath, pluginDataPath, enforceNamespaces, nodeId, i, handlersCount)
+		h, err := handler.NewOrasHandler(rootPath, pluginDataPath, enforceNamespaces, nodeId, i, handlersCount)
+		if err != nil {
+			return nil, err
+		}
+		handlers[i] = h
 	}
 	if OrasLog {
 		handlers[0].SetOrasLogging()

@@ -5,22 +5,22 @@ import (
 	"io"
 	"os"
 
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry/remote"
 )
 
 // Function that accepts an image reference and directory path
-func pullBlob(repo *remote.Repository, blobRef string, filename string) (fetchErr error) {
+func pullBlob(target oras.ReadOnlyTarget, blobRef string, filename string) (fetchErr error) {
 
 	ctx := context.Background()
 
-	desc, err := repo.Blobs().Resolve(ctx, blobRef)
+	desc, err := target.Resolve(ctx, blobRef)
 	if err != nil {
 		return err
 	}
 
 	// Download using the descriptor
-	readCloser, err := repo.Fetch(ctx, desc)
+	readCloser, err := target.Fetch(ctx, desc)
 	if err != nil {
 		return err
 	}
