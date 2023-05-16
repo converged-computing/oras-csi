@@ -124,7 +124,7 @@ func (mnt *OrasHandler) DeleteVolume(volumeId string) error {
 
 // Ensure the artifact (and pull contents there)
 func (mnt *OrasHandler) ensureArtifact(artifactRoot string, settings orasSettings) error {
-	// Does it already exist?
+	// fixme: the artifact root path will not reflect change of the tag
 	_, err := os.Stat(artifactRoot)
 
 	// Pull if it doesn't exist, or user has requested a force re-pull
@@ -312,7 +312,7 @@ func (mnt *OrasHandler) OrasPathToVolume(settings orasSettings) (string, error) 
 	}
 
 	// Pull (or ensure artifact already exists)
-	err := mnt.ensureArtifact(artifactRoot, settings)
+	err := mnt.OrasPull(artifactRoot, settings)
 	if err != nil {
 		return "", err
 	}
