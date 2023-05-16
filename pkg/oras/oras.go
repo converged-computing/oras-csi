@@ -184,7 +184,7 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 	}
 	defer readCloser.Close()
 	// todo: make below refreshable
-	mnt.manifests.Store(settings.rawReference, desc.Digest)
+	mnt.manifests.Store(settings.rawReference, desc.Digest.String())
 
 	// Read the pulled content
 	log.Printf("Found digest: %s for %s", desc.Digest.String(), settings.tag)
