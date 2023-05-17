@@ -20,6 +20,7 @@ import (
 	"io"
 	"sync"
 
+	"github.com/billy-playground/oras-csi/pkg/utils"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -58,12 +59,12 @@ func (t *proxy) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCl
 	rc, err := t.cache.Fetch(ctx, target)
 	if err == nil {
 		// Fetch from cache
+		log.Infof("Cached fetching : %s", utils.DescToString(target))
 		return rc, nil
 	}
 
 	if rc, err = t.ReadOnlyTarget.Fetch(ctx, target); err != nil {
-
-		log.Infof("Fetching from source: %v", target)
+		log.Infof("Uncached fetching : %s", utils.DescToString(target))
 		return nil, err
 	}
 

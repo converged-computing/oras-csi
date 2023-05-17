@@ -154,7 +154,7 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 	}
 
 	// 2. fetch manifest
-	log.Printf("Fetching manifest %v", desc)
+	log.Printf("Fetching manifest %s", utils.DescToString(desc))
 	readCloser, err := proxy.Fetch(ctx, desc)
 	if err != nil {
 		return err
