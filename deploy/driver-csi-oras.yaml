@@ -161,7 +161,7 @@ spec:
             capabilities:
               add: ["SYS_ADMIN"]
             allowPrivilegeEscalation: true
-          image: ghcr.io/converged-computing/oras-csi-plugin:latest
+          image: ghcr.io/billy-playground/oras-csi-plugin:latest
           args:
             - "--mode=node"
             - "--csi-endpoint=$(CSI_ENDPOINT)"

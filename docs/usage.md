@@ -130,30 +130,37 @@ $ kubectl logs -n kube-system csi-oras-node-bb7mw csi-oras-plugin -f
 <summary>More verbose output</summary>
 
 ```console
-time="2023-04-15T03:31:19Z" level=info msg="Preparing artifact cache (mode: node; node-id: minikube; root-dir: /; plugin-data-dir: pv_data enforce-namespaces: %!s(bool=true))"
-time="2023-04-15T03:31:19Z" level=info msg="NewNodeService creation (rootDir /, pluginDataDir pv_data, nodeId minikube, handlersCount 1)"
-time="2023-04-15T03:31:19Z" level=info msg="StartService - endpoint unix:///csi/csi.sock"
-time="2023-04-15T03:31:19Z" level=info msg=CreategRPCServer
-time="2023-04-15T03:31:19Z" level=info msg="CreateListener - endpoint unix:///csi/csi.sock"
-time="2023-04-15T03:31:19Z" level=info msg="CreateListener - Removing socket /csi/csi.sock"
-time="2023-04-15T03:31:19Z" level=info msg="StartService - Registering node service"
-time="2023-04-15T03:31:19Z" level=info msg="StartService - Starting to serve!"
-time="2023-04-15T03:31:20Z" level=info msg=GetPluginInfo
-time="2023-04-15T03:31:22Z" level=info msg=NodeGetInfo
-time="2023-04-15T03:32:26Z" level=info msg="NodePublishVolume - VolumeId: csi-16c0ab68018efd3a4f540655a119f3af7955bdd0d3f8d0882ef749757e154d0d, Readonly: true, VolumeContext map[csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:47933acc-6ba8-4e11-b7ba-71837f6cd0ea csi.storage.k8s.io/serviceAccount.name:default oras.artifact.reference:ghcr.io/singularityhub/github-ci:latest], PublishContext map[], VolumeCapability mount:<> access_mode:<mode:SINGLE_NODE_WRITER >  TargetPath /var/lib/kubelet/pods/47933acc-6ba8-4e11-b7ba-71837f6cd0ea/volumes/kubernetes.io~csi/oras-inline/mount"
-time="2023-04-15T03:32:26Z" level=info msg="Looking for volume context...."
-time="2023-04-15T03:32:26Z" level=info msg="map[csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:47933acc-6ba8-4e11-b7ba-71837f6cd0ea csi.storage.k8s.io/serviceAccount.name:default oras.artifact.reference:ghcr.io/singularityhub/github-ci:latest]"
-time="2023-04-15T03:32:27Z" level=info msg="volume source directory:/pv_data/ghcr-io-singularityhub-github-ci-latest"
-time="2023-04-15T03:32:27Z" level=info msg="volume target directory:/var/lib/kubelet/pods/47933acc-6ba8-4e11-b7ba-71837f6cd0ea/volumes/kubernetes.io~csi/oras-inline/mount"
-time="2023-04-15T03:32:27Z" level=info msg="volume options:[ro]"
-time="2023-04-15T03:33:01Z" level=info msg="NodeUnpublishVolume - VolumeId: csi-16c0ab68018efd3a4f540655a119f3af7955bdd0d3f8d0882ef749757e154d0d, TargetPath: /var/lib/kubelet/pods/47933acc-6ba8-4e11-b7ba-71837f6cd0ea/volumes/kubernetes.io~csi/oras-inline/mount)"
-time="2023-04-15T03:33:08Z" level=info msg="NodePublishVolume - VolumeId: csi-c53cdb53dc3045deec22489a48716a714dd6b2beef2dc2657234b317b92e93bb, Readonly: true, VolumeContext map[csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:e0dfd3c8-66e4-4a8c-8501-99cf50bb094e csi.storage.k8s.io/serviceAccount.name:default oras.artifact.reference:ghcr.io/singularityhub/github-ci:latest], PublishContext map[], VolumeCapability mount:<> access_mode:<mode:SINGLE_NODE_WRITER >  TargetPath /var/lib/kubelet/pods/e0dfd3c8-66e4-4a8c-8501-99cf50bb094e/volumes/kubernetes.io~csi/oras-inline/mount"
-time="2023-04-15T03:33:08Z" level=info msg="Looking for volume context...."
-time="2023-04-15T03:33:08Z" level=info msg="map[csi.storage.k8s.io/ephemeral:true csi.storage.k8s.io/pod.name:my-csi-app-inline csi.storage.k8s.io/pod.namespace:default csi.storage.k8s.io/pod.uid:e0dfd3c8-66e4-4a8c-8501-99cf50bb094e csi.storage.k8s.io/serviceAccount.name:default oras.artifact.reference:ghcr.io/singularityhub/github-ci:latest]"
-time="2023-04-15T03:33:08Z" level=info msg="volume source directory:/pv_data/ghcr-io-singularityhub-github-ci-latest"
-time="2023-04-15T03:33:08Z" level=info msg="volume target directory:/var/lib/kubelet/pods/e0dfd3c8-66e4-4a8c-8501-99cf50bb094e/volumes/kubernetes.io~csi/oras-inline/mount"
-time="2023-04-15T03:33:08Z" level=info msg="volume options:[ro]"
+time="2023-05-17T09:59:58Z" level=info msg="Preparing artifact cache (mode: node; node-id: oras-csi-control-plane; root-dir: /; plugin-data-dir: pv_data enforce-namespaces: true)"
+time="2023-05-17T09:59:58Z" level=info msg="NewNodeService creation (rootDir /, pluginDataDir pv_data, nodeId oras-csi-control-plane, handlersCount 1)"
+time="2023-05-17T09:59:58Z" level=info msg="Setting up ORAS Logging. ORAS path: /pv_data/logs"
+time="2023-05-17T09:59:58Z" level=info msg="ORAS Logging set up!"
+time="2023-05-17T09:59:58Z" level=info msg="StartService - endpoint unix:///csi/csi.sock"
+time="2023-05-17T09:59:58Z" level=info msg=CreategRPCServer
+time="2023-05-17T09:59:58Z" level=info msg="CreateListener - endpoint unix:///csi/csi.sock"
+time="2023-05-17T09:59:58Z" level=info msg="CreateListener - Removing socket /csi/csi.sock"
+time="2023-05-17T09:59:58Z" level=info msg="StartService - Registering node service"
+time="2023-05-17T09:59:58Z" level=info msg="StartService - Starting to serve!"
+time="2023-05-17T09:59:58Z" level=info msg=GetPluginInfo
+time="2023-05-17T09:59:58Z" level=info msg=NodeGetInfo
+time="2023-05-17T10:01:49Z" level=info msg="NodePublishVolume - VolumeId: csi-b2e6bcaddfcc84d4434e8bc126bf2a225009e95cef2215e57a1b4e1f277bf900, Readonly: true, VolumeCapability mount:<> access_mode:<mode:SINGLE_NODE_WRITER >  TargetPath /var/lib/kubelet/pods/44bb7b41-7854-4bdf-a2c5-d3552aee35f5/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-05-17T10:01:49Z" level=info msg="Looking for volume context...."
+time="2023-05-17T10:01:49Z" level=info msg="Oras - container: ghcr.io/singularityhub/github-ci, target: /mnt/oras-csi-control-plane"
+time="2023-05-17T10:01:49Z" level=info msg="Enforce namespaces: true"
+time="2023-05-17T10:01:49Z" level=info msg="Enforcing artifact namespace to be under default"
+time="2023-05-17T10:01:49Z" level=info msg="Remote repository ghcr.io/singularityhub/github-ci:latest will be proxied by /pv_data/default/ghcr-io-singularityhub-github-ci-latest"
+time="2023-05-17T10:01:49Z" level=info msg="Resolving manifest descriptor for ghcr.io/singularityhub/github-ci:latest"
+time="2023-05-17T10:01:50Z" level=info msg="Fetching manifest {\"MediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"Digest\":\"sha256:5d6742ff0b10c1196202765dafb43275259bcbdbd3868c19ba1d19476c088867\",\"Size\":402}"
+time="2023-05-17T10:01:50Z" level=info msg="Uncached fetching : {\"MediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"Digest\":\"sha256:5d6742ff0b10c1196202765dafb43275259bcbdbd3868c19ba1d19476c088867\",\"Size\":402}"
+time="2023-05-17T10:01:50Z" level=info msg="Pulling sha256:acb1ec674e686f4ba7a0e5c0ce1d41b6c2a5f5f1b9b9baca9c612f794faa3f8e, 1 of 1"
+time="2023-05-17T10:01:50Z" level=info msg="Uncached fetching : {\"MediaType\":\"application/vnd.sylabs.sif.layer.v1.sif\",\"Digest\":\"sha256:acb1ec674e686f4ba7a0e5c0ce1d41b6c2a5f5f1b9b9baca9c612f794faa3f8e\",\"Size\":798720}"
+time="2023-05-17T10:01:50Z" level=info msg="OCI: Writing sha256:acb1ec674e686f4ba7a0e5c0ce1d41b6c2a5f5f1b9b9baca9c612f794faa3f8e to /pv_data/default/ghcr-io-singularityhub-github-ci-latest/container.sif"
+time="2023-05-17T10:01:50Z" level=info msg="Oras artifact root: /pv_data/default/ghcr-io-singularityhub-github-ci-latest"
+time="2023-05-17T10:01:50Z" level=info msg="Found artifact asset: container.sif"
+time="2023-05-17T10:01:50Z" level=info msg="volume source directory:/pv_data/default/ghcr-io-singularityhub-github-ci-latest"
+time="2023-05-17T10:01:50Z" level=info msg="volume target directory:/var/lib/kubelet/pods/44bb7b41-7854-4bdf-a2c5-d3552aee35f5/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-05-17T10:01:50Z" level=info msg="volume options:[ro]"
 ```
+Notice that the `Uncached fetching` indicates that manifest and sif layer blob are both pulled from the remote registry.
 
 </details>
 
@@ -215,18 +222,24 @@ root@my-second-csi-app-inline:/# ls /mnt/second-oras/
 container.sif
 ```
 
-Importantly, in the logs we see an indication that the container was not re-pulled (our original goal): `Artifact root already exists, no need to re-create!`
+Importantly, in the logs we see an indication that the manifest and sif blob are pulled from the OCI layout cache (our original goal): `Cached fetching :`
 
 ```console
-time="2023-04-12T20:34:37Z" level=info msg="Artifact root already exists, no need to re-create!"
-time="2023-04-12T20:34:37Z" level=info msg="Oras artifact root: /pv_data/ghcr-io-singularityhub-github-ci-latest"
-time="2023-04-12T20:34:37Z" level=info msg="Found artifact asset: container.sif"
-time="2023-04-12T20:34:37Z" level=info msg="volume source directory:/pv_data/ghcr-io-singularityhub-github-ci-latest"
-time="2023-04-12T20:34:37Z" level=info msg="volume target directory:/var/lib/kubelet/pods/eda9a3b5-b6ce-41c5-84d2-ea7a1ea677bb/volumes/kubernetes.io~csi/oras-inline/mount"
-time="2023-04-12T20:34:37Z" level=info msg="volume options:[ro]"
-time="2023-04-12T20:34:37Z" level=info msg="BindMount - source: /pv_data/ghcr-io-singularityhub-github-ci-latest, target: /var/lib/kubelet/pods/eda9a3b5-b6ce-41c5-84d2-ea7a1ea677bb/volumes/kubernetes.io~csi/oras-inline/mount, options: [ro]"
-time="2023-04-12T20:34:37Z" level=info msg="mount -o bind /pv_data/ghcr-io-singularityhub-github-ci-latest /var/lib/kubelet/pods/eda9a3b5-b6ce-41c5-84d2-ea7a1ea677bb/volumes/kubernetes.io~csi/oras-inline/mount"
-time="2023-04-12T20:34:37Z" level=info msg="Successfully mounted /pv_data/ghcr-io-singularityhub-github-ci-latest to /var/lib/kubelet/pods/eda9a3b5-b6ce-41c5-84d2-ea7a1ea677bb/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-05-17T10:03:11Z" level=info msg="Remote repository ghcr.io/singularityhub/github-ci:latest will be proxied by /pv_data/default/ghcr-io-singularityhub-github-ci-latest"
+time="2023-05-17T10:03:11Z" level=info msg="Manifest cached for ghcr.io/singularityhub/github-ci:latest"
+time="2023-05-17T10:03:11Z" level=info msg="Fetching manifest {\"MediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"Digest\":\"sha256:5d6742ff0b10c1196202765dafb43275259bcbdbd3868c19ba1d19476c088867\",\"Size\":402}"
+time="2023-05-17T10:03:11Z" level=info msg="Cached fetching : {\"MediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"Digest\":\"sha256:5d6742ff0b10c1196202765dafb43275259bcbdbd3868c19ba1d19476c088867\",\"Size\":402}"
+time="2023-05-17T10:03:11Z" level=info msg="Pulling sha256:acb1ec674e686f4ba7a0e5c0ce1d41b6c2a5f5f1b9b9baca9c612f794faa3f8e, 1 of 1"
+time="2023-05-17T10:03:11Z" level=info msg="Cached fetching : {\"MediaType\":\"application/vnd.sylabs.sif.layer.v1.sif\",\"Digest\":\"sha256:acb1ec674e686f4ba7a0e5c0ce1d41b6c2a5f5f1b9b9baca9c612f794faa3f8e\",\"Size\":798720}"
+time="2023-05-17T10:03:11Z" level=info msg="OCI: Writing sha256:acb1ec674e686f4ba7a0e5c0ce1d41b6c2a5f5f1b9b9baca9c612f794faa3f8e to /pv_data/default/ghcr-io-singularityhub-github-ci-latest/container.sif"
+time="2023-05-17T10:03:11Z" level=info msg="Oras artifact root: /pv_data/default/ghcr-io-singularityhub-github-ci-latest"
+time="2023-05-17T10:03:11Z" level=info msg="Found artifact asset: container.sif"
+time="2023-05-17T10:03:11Z" level=info msg="volume source directory:/pv_data/default/ghcr-io-singularityhub-github-ci-latest"
+time="2023-05-17T10:03:11Z" level=info msg="volume target directory:/var/lib/kubelet/pods/eff62b75-3449-470c-af17-c4ba06adcf41/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-05-17T10:03:11Z" level=info msg="volume options:[ro]"
+time="2023-05-17T10:03:11Z" level=info msg="BindMount - source: /pv_data/default/ghcr-io-singularityhub-github-ci-latest, target: /var/lib/kubelet/pods/eff62b75-3449-470c-af17-c4ba06adcf41/volumes/kubernetes.io~csi/oras-inline/mount, options: [ro]"
+time="2023-05-17T10:03:11Z" level=info msg="mount -o bind /pv_data/default/ghcr-io-singularityhub-github-ci-latest /var/lib/kubelet/pods/eff62b75-3449-470c-af17-c4ba06adcf41/volumes/kubernetes.io~csi/oras-inline/mount"
+time="2023-05-17T10:03:11Z" level=info msg="Successfully mounted /pv_data/default/ghcr-io-singularityhub-github-ci-latest to /var/lib/kubelet/pods/eff62b75-3449-470c-af17-c4ba06adcf41/volumes/kubernetes.io~csi/oras-inline/mount"
 ```
 
 Let's try testing that the artifact remains persistent on the node and delete both pods, and also
@@ -264,7 +277,11 @@ Now we can theoretically create a pod again, and that same container.sif should 
 $ kubectl apply -f examples/basic/pod/pod.yaml
 ```
 ```console
-time="2023-04-12T20:52:16Z" level=info msg="Artifact root already exists, no need to re-create!"
+time="2023-05-17T10:03:11Z" level=info msg="Manifest cached for ghcr.io/singularityhub/github-ci:latest"
+time="2023-05-17T10:03:11Z" level=info msg="Fetching manifest {\"MediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"Digest\":\"sha256:5d6742ff0b10c1196202765dafb43275259bcbdbd3868c19ba1d19476c088867\",\"Size\":402}"
+time="2023-05-17T10:03:11Z" level=info msg="Cached fetching : {\"MediaType\":\"application/vnd.oci.image.manifest.v1+json\",\"Digest\":\"sha256:5d6742ff0b10c1196202765dafb43275259bcbdbd3868c19ba1d19476c088867\",\"Size\":402}"
+time="2023-05-17T10:03:11Z" level=info msg="Pulling sha256:acb1ec674e686f4ba7a0e5c0ce1d41b6c2a5f5f1b9b9baca9c612f794faa3f8e, 1 of 1"
+time="2023-05-17T10:03:11Z" level=info msg="Cached fetching : {\"MediaType\":\"application/vnd.sylabs.sif.layer.v1.sif\",\"Digest\":\"sha256:acb1ec674e686f4ba7a0e5c0ce1d41b6c2a5f5f1b9b9baca9c612f794faa3f8e\",\"Size\":798720}"
 ```
 
 And that's it! We very likely should have an attribute that specifies for this to be cleaned up and re-created. E.g., you

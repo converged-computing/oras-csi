@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"encoding/json"
 	"path/filepath"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // GetFullPath from a relative path
@@ -29,4 +32,21 @@ func ListContains(list []string, lookingFor string) bool {
 		}
 	}
 	return false
+}
+
+// DescToString strips a descriptor and return compacted json
+func DescToString(desc ocispec.Descriptor) string {
+	var stripped = struct {
+		MediaType string
+		Digest    string
+		Size      int64
+	}{
+		desc.MediaType,
+		desc.Digest.String(),
+		desc.Size,
+	}
+
+	// marshal stripped and compact
+	descJSON, _ := json.Marshal(stripped)
+	return string(descJSON)
 }

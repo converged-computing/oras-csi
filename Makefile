@@ -3,7 +3,7 @@ DEVTAG=$(DRIVER_VERSION)-dev
 HELM_PLUGIN_NAME=oras-csi
 BATS := bats
 NAME=oras-csi-plugin
-DOCKER_REGISTRY=ghcr.io/converged-computing
+DOCKER_REGISTRY=ghcr.io/billy-playground
 
 .PHONY: help
 help: ## Generates help for all targets
