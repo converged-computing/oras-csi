@@ -3,7 +3,6 @@ package oras
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -122,74 +121,47 @@ func (mnt *OrasHandler) DeleteVolume(volumeId string) error {
 	return nil
 }
 
-// Ensure the artifact (and pull contents there)
-func (mnt *OrasHandler) ensureArtifact(artifactRoot string, settings orasSettings) error {
-	// fixme: the artifact root path will not reflect change of the tag
-	_, err := os.Stat(artifactRoot)
-
-	// Pull if it doesn't exist, or user has requested a force re-pull
-	if settings.optionsPullAlways || errors.Is(err, os.ErrNotExist) {
-		log.Info("Artifact root does not exist, creating", artifactRoot)
-		if err := mnt.OrasPull(artifactRoot, settings); err != nil {
-			return err
-		}
-	} else {
-		log.Info("Artifact root already exists, no need to re-create!")
-	}
-	return nil
-}
-
 // Pull the oras container to the plugin data directory
 // Derived from https://github.com/sajayantony/csi-driver-host-path/blob/1bcc9d435d0c3ccd93fa1855e8669aad0f3bd1b5/pkg/oci/oci.go
 // We are working on this plugin together
 func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) error {
-	// 0. Create a file store
-	artifactRoot, err := utils.GetFullPath(artifactRoot)
+	// 0. caching the remote repository with OCI layout as proxy
+	log.Infof("Remote repository %s will be proxied by %s", settings.rawReference, artifactRoot)
+	repo, err := remote.NewRepository(settings.rawReference)
 	if err != nil {
 		return err
 	}
-	log.Infof("Creating oras filestore at: %s", artifactRoot)
-	os.MkdirAll(artifactRoot, os.ModePerm)
+	repo.PlainHTTP = settings.optionsPlainHttp
 
-	// 1. fetch manifest
-	var manifestRef string
-	var manifests oras.ReadOnlyTarget
-	var blobs oras.ReadOnlyTarget
+	proxy := New(repo, mnt.ociStore)
+	blobs := New(repo.Blobs(), mnt.ociStore) //FIXME: just to accomodate the current implementation, can be replaced by oras.Copy if blob pull can be inlined
+
+	// 1. resolve manifest descriptor
+	var desc ocispec.Descriptor
 	ctx := context.Background()
-	if digest, ok := mnt.manifests.Load(settings.rawReference); ok {
-		// manifest cached
-		// todo: make sure the manifest is still valid, maybe set timeout for expiration
+	if found, ok := mnt.manifests.Load(settings.rawReference); ok {
 		log.Infof("Manifest cached for %s", settings.rawReference)
-		manifestRef = digest.(string)
-		blobs = mnt.ociStore
-
+		desc = found.(ocispec.Descriptor)
 	} else {
-		// cache OCI to a remote repository
-		log.Infof("Preparing to pull from remote repository: %s", settings.rawReference)
-		repo, err := remote.NewRepository(settings.rawReference)
-		log.Infof("Plain http: %t", settings.optionsPlainHttp)
-		repo.PlainHTTP = settings.optionsPlainHttp
+		// todo: uri-based request caching
+		log.Infof("Resolving manifest descriptor for %s", settings.rawReference)
+		desc, err = oras.Resolve(ctx, proxy, settings.rawReference, oras.DefaultResolveOptions)
 		if err != nil {
 			return err
 		}
-		blobs = New(repo.Blobs(), mnt.ociStore)
-		manifests = New(repo.Manifests(), mnt.ociStore)
-		// create a target that tees all the fetch from remote repository
-		// todo: maybe resolve the digest to optimize if the manifest blob is already cached across repositories
-		manifestRef = settings.tag
+		// todo: cache entry expiration
+		mnt.manifests.Store(settings.rawReference, desc)
 	}
 
-	// Fetch manifest for tag
-	desc, readCloser, err := oras.Fetch(ctx, manifests, manifestRef, oras.DefaultFetchOptions)
+	// 2. fetch manifest
+	log.Printf("Fetching manifest %v", desc)
+	readCloser, err := proxy.Fetch(ctx, desc)
 	if err != nil {
 		return err
 	}
 	defer readCloser.Close()
-	// todo: make below refreshable
-	mnt.manifests.Store(settings.rawReference, desc.Digest.String())
 
 	// Read the pulled content
-	log.Printf("Found digest: %s for %s", desc.Digest.String(), settings.tag)
 	content, err := content.ReadAll(readCloser, desc)
 	if err != nil {
 		return err
@@ -236,7 +208,7 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 		}
 
 		// TODO could have a "pull if different size" or similar here
-		err = pullBlob(blobs, layer.Digest.String(), fullPath)
+		err = pullBlob(ctx, blobs, layer, fullPath)
 		if err != nil {
 			return err
 		}

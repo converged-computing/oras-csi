@@ -5,17 +5,15 @@ import (
 	"io"
 	"os"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 )
 
 // Function that accepts an image reference and directory path
-func pullBlob(target oras.ReadOnlyTarget, blobRef string, filename string) (fetchErr error) {
-
-	ctx := context.Background()
-
+func pullBlob(ctx context.Context, target oras.ReadOnlyTarget, desc ocispec.Descriptor, filename string) (fetchErr error) {
 	// Download using the descriptor
-	desc, readCloser, err := oras.Fetch(ctx, target, blobRef, oras.DefaultFetchOptions)
+	readCloser, err := target.Fetch(ctx, desc)
 	if err != nil {
 		return err
 	}

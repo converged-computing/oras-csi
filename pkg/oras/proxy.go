@@ -32,21 +32,21 @@ func (fn closer) Close() error {
 	return fn()
 }
 
-// Cache target struct.
-type target struct {
+// Cache proxy struct.
+type proxy struct {
 	oras.ReadOnlyTarget
 	cache content.Storage
 }
 
 // New generates a new target storage with caching.
 func New(source oras.ReadOnlyTarget, cache content.Storage) oras.ReadOnlyTarget {
-	t := &target{
+	t := &proxy{
 		ReadOnlyTarget: source,
 		cache:          cache,
 	}
 	if refFetcher, ok := source.(registry.ReferenceFetcher); ok {
-		return &referenceTarget{
-			target:           t,
+		return &referenceProxy{
+			proxy:            t,
 			ReferenceFetcher: refFetcher,
 		}
 	}
@@ -54,7 +54,7 @@ func New(source oras.ReadOnlyTarget, cache content.Storage) oras.ReadOnlyTarget 
 }
 
 // Fetch fetches the content identified by the descriptor.
-func (t *target) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
+func (t *proxy) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error) {
 	rc, err := t.cache.Fetch(ctx, target)
 	if err == nil {
 		// Fetch from cache
@@ -62,6 +62,8 @@ func (t *target) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadC
 	}
 
 	if rc, err = t.ReadOnlyTarget.Fetch(ctx, target); err != nil {
+
+		log.Infof("Fetching from source: %v", target)
 		return nil, err
 	}
 
@@ -69,7 +71,7 @@ func (t *target) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadC
 	return t.cacheReadCloser(ctx, rc, target), nil
 }
 
-func (t *target) cacheReadCloser(ctx context.Context, rc io.ReadCloser, target ocispec.Descriptor) io.ReadCloser {
+func (t *proxy) cacheReadCloser(ctx context.Context, rc io.ReadCloser, target ocispec.Descriptor) io.ReadCloser {
 	pr, pw := io.Pipe()
 	var wg sync.WaitGroup
 
@@ -103,7 +105,7 @@ func (t *target) cacheReadCloser(ctx context.Context, rc io.ReadCloser, target o
 }
 
 // Exists returns true if the described content exists.
-func (t *target) Exists(ctx context.Context, desc ocispec.Descriptor) (bool, error) {
+func (t *proxy) Exists(ctx context.Context, desc ocispec.Descriptor) (bool, error) {
 	exists, err := t.cache.Exists(ctx, desc)
 	if err == nil && exists {
 		return true, nil
@@ -111,9 +113,9 @@ func (t *target) Exists(ctx context.Context, desc ocispec.Descriptor) (bool, err
 	return t.ReadOnlyTarget.Exists(ctx, desc)
 }
 
-// Cache referenceTarget struct.
-type referenceTarget struct {
-	*target
+// Cache referenceProxy struct.
+type referenceProxy struct {
+	*proxy
 	registry.ReferenceFetcher
 }
 
@@ -121,7 +123,7 @@ type referenceTarget struct {
 // remote and cache the fetched content.
 // Cached content will only be read via Fetch, FetchReference will always fetch
 // From origin.
-func (t *referenceTarget) FetchReference(ctx context.Context, reference string) (ocispec.Descriptor, io.ReadCloser, error) {
+func (t *referenceProxy) FetchReference(ctx context.Context, reference string) (ocispec.Descriptor, io.ReadCloser, error) {
 	target, rc, err := t.ReferenceFetcher.FetchReference(ctx, reference)
 	if err != nil {
 		return ocispec.Descriptor{}, nil, err
