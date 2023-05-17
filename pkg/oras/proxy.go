@@ -63,8 +63,8 @@ func (t *proxy) Fetch(ctx context.Context, target ocispec.Descriptor) (io.ReadCl
 		return rc, nil
 	}
 
+	log.Infof("Uncached fetching : %s", utils.DescToString(target))
 	if rc, err = t.ReadOnlyTarget.Fetch(ctx, target); err != nil {
-		log.Infof("Uncached fetching : %s", utils.DescToString(target))
 		return nil, err
 	}
 

@@ -185,7 +185,7 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 	total := len(manifest.Layers)
 	extractCount := 0
 	for i, layer := range manifest.Layers {
-		log.Infof("Pulling %s, %d of %d", layer.Digest, i, total)
+		log.Infof("Pulling %s, %d of %d", layer.Digest, i+1, total)
 		filename, found := layer.Annotations["org.opencontainers.image.title"]
 
 		// This shouldn't happen, but you never know!
