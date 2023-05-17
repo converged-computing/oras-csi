@@ -14,13 +14,8 @@ func pullBlob(target oras.ReadOnlyTarget, blobRef string, filename string) (fetc
 
 	ctx := context.Background()
 
-	desc, err := target.Resolve(ctx, blobRef)
-	if err != nil {
-		return err
-	}
-
 	// Download using the descriptor
-	readCloser, err := target.Fetch(ctx, desc)
+	desc, readCloser, err := oras.Fetch(ctx, target, blobRef, oras.DefaultFetchOptions)
 	if err != nil {
 		return err
 	}

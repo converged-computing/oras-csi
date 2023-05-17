@@ -153,14 +153,15 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 
 	// 1. fetch manifest
 	var manifestRef string
-	var target oras.ReadOnlyTarget
+	var manifests oras.ReadOnlyTarget
+	var blobs oras.ReadOnlyTarget
 	ctx := context.Background()
 	if digest, ok := mnt.manifests.Load(settings.rawReference); ok {
 		// manifest cached
 		// todo: make sure the manifest is still valid, maybe set timeout for expiration
 		log.Infof("Manifest cached for %s", settings.rawReference)
 		manifestRef = digest.(string)
-		target = mnt.ociStore
+		blobs = mnt.ociStore
 
 	} else {
 		// cache OCI to a remote repository
@@ -171,14 +172,15 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 		if err != nil {
 			return err
 		}
-		target = New(repo, mnt.ociStore)
+		blobs = New(repo.Blobs(), mnt.ociStore)
+		manifests = New(repo.Manifests(), mnt.ociStore)
 		// create a target that tees all the fetch from remote repository
 		// todo: maybe resolve the digest to optimize if the manifest blob is already cached across repositories
 		manifestRef = settings.tag
 	}
 
 	// Fetch manifest for tag
-	desc, readCloser, err := oras.Fetch(ctx, target, manifestRef, oras.DefaultFetchOptions)
+	desc, readCloser, err := oras.Fetch(ctx, manifests, manifestRef, oras.DefaultFetchOptions)
 	if err != nil {
 		return err
 	}
@@ -234,7 +236,7 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 		}
 
 		// TODO could have a "pull if different size" or similar here
-		err = pullBlob(target, layer.Digest.String(), fullPath)
+		err = pullBlob(blobs, layer.Digest.String(), fullPath)
 		if err != nil {
 			return err
 		}
