@@ -164,8 +164,8 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 
 	} else {
 		// cache OCI to a remote repository
-		log.Infof("Preparing to pull from remote repository: %s", settings.reference)
-		repo, err := remote.NewRepository(settings.reference)
+		log.Infof("Preparing to pull from remote repository: %s", settings.rawReference)
+		repo, err := remote.NewRepository(settings.rawReference)
 		log.Infof("Plain http: %t", settings.optionsPlainHttp)
 		repo.PlainHTTP = settings.optionsPlainHttp
 		if err != nil {
