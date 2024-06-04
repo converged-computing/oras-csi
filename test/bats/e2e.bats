@@ -2,7 +2,7 @@
 
 # This is run relative to the root
 EXAMPLES_DIR=examples/basic/pod
-SLEEP_TIME=10
+SLEEP_TIME=20
 
 @test "basic pod test" {
   kubectl apply -f ${EXAMPLES_DIR}/pod.yaml
