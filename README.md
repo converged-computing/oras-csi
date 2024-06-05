@@ -1,7 +1,7 @@
 # CSI ORAS Driver
 
 This repository is a test to create a CSI driver into one that uses [ORAS](https://oras.land) to
-generate a cluster-level cache of artifacts. Read about the [use cases](docs/use-cases.md) or jump in!
+generate a cluster-level cache of artifacts. Read about the [use cases](docs/about.md) or jump in!
 
 ```console
 	██████╗ ██████╗  █████╗ ███████╗       ██████╗███████╗██╗
