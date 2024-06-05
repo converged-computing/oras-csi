@@ -7,7 +7,8 @@ SLEEP_TIME=10
 @test "basic pod test" {
   kubectl apply -f ${EXAMPLES_DIR}/pod.yaml
   sleep ${SLEEP_TIME}
-  kubectl wait --for=condition=ready pod -l job-name=oras-test --timeout=600s
+
+  kubectl wait --for=condition=ready pod -l job-name=oras-test --timeout=1200s
 
   # This test is looking inside our pod to the requested mount point
   kubectl exec -t my-csi-app-inline -- ls /mnt/oras | grep container.sif

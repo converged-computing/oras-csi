@@ -39,7 +39,8 @@ jobs:
         helm install --set node.csiOrasPlugin.image.repository="ghcr.io/github-actions/oras-csi-plugin" \
                      --set node.csiOrasPlugin.image.tag="latest" \
                      --set node.csiOrasPlugin.imagePullPolicy="Never" \
-                     oras-csi ./charts 
+                     oras-csi ./charts
+        sleep 20
 
     - name: Run tests with Bats
       run: make test
