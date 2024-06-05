@@ -45,4 +45,4 @@ jobs:
         PKG_RESPONSE=$(helm package ./charts)
         echo "$PKG_RESPONSE"
         CHART_TAR_GZ=$(basename "$PKG_RESPONSE") 
-        helm push "$CHART_TAR_GZ" oci://ghcr.io/converged-computing/oras-csi-helm
+        helm push "$CHART_TAR_GZ" oci://ghcr.io/billy-playground/oras-csi-helm

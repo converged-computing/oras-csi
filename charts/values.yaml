@@ -16,7 +16,7 @@ node:
     env:
       csiEndpoint: unix:///csi/csi.sock
     image:
-      repository: ghcr.io/converged-computing/oras-csi-plugin
+      repository: ghcr.io/billy-playground/oras-csi-plugin
       tag: latest
     imagePullPolicy: Always
   driverRegistrar:

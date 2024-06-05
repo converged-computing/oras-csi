@@ -3,21 +3,23 @@ package oras
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/converged-computing/oras-csi/pkg/utils"
-	oci "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/billy-playground/oras-csi/pkg/utils"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"gopkg.in/natefinch/lumberjack.v2"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -39,16 +41,18 @@ func Init(logLevel int) error {
 }
 
 type OrasHandler struct {
-	name              string // handler name
-	testRun           bool   // is this just a test run?
-	rootPath          string // oras root path
-	pluginDataPath    string // plugin data path (inside rootPath)
-	hostMountPath     string // host mount path
-	enforceNamespaces bool   // do not allow artifacts to cross namespaces
+	name              string     // handler name
+	testRun           bool       // is this just a test run?
+	rootPath          string     // oras root path
+	pluginDataPath    string     // plugin data path (inside rootPath)
+	hostMountPath     string     // host mount path
+	enforceNamespaces bool       // do not allow artifacts to cross namespaces
+	manifests         *sync.Map  // inmemory cached manifest
+	ociStore          *oci.Store // oci.Store cache
 }
 
 // NewOrasHandler creates a new oras handles to mount a container URI, pulled once
-func NewOrasHandler(rootPath, pluginDataPath string, enforceNamespaces bool, name string, num ...int) *OrasHandler {
+func NewOrasHandler(rootPath, pluginDataPath string, enforceNamespaces bool, name string, num ...int) (*OrasHandler, error) {
 	var numSufix = ""
 	if len(num) == 2 {
 		if num[0] == 0 && num[1] == 1 {
@@ -60,13 +64,20 @@ func NewOrasHandler(rootPath, pluginDataPath string, enforceNamespaces bool, nam
 		log.Errorf("NewOrasHandler - Unexpected number of arguments: %d; expected 0 or 2", len(num))
 	}
 
+	store, err := oci.New(filepath.Join(rootPath, pluginDataPath))
+	if err != nil {
+		return nil, err
+	}
+	store.AutoSaveIndex = false
 	return &OrasHandler{
 		rootPath:          rootPath,
 		pluginDataPath:    pluginDataPath,
 		name:              name,
 		hostMountPath:     path.Join(mntDir, fmt.Sprintf("%s%s", name, numSufix)),
 		enforceNamespaces: enforceNamespaces,
-	}
+		manifests:         &sync.Map{},
+		ociStore:          store,
+	}, nil
 }
 
 // SetOrasLogging sets up logging for the oras plugin
@@ -110,66 +121,47 @@ func (mnt *OrasHandler) DeleteVolume(volumeId string) error {
 	return nil
 }
 
-// Ensure the artifact (and pull contents there)
-func (mnt *OrasHandler) ensureArtifact(artifactRoot string, settings orasSettings) error {
-
-	// Does it already exist?
-	_, err := os.Stat(artifactRoot)
-
-	// Pull if it doesn't exist, or user has requested a force re-pull
-	if settings.optionsPullAlways || errors.Is(err, os.ErrNotExist) {
-		log.Info("Artifact root does not exist, creating", artifactRoot)
-		if err := mnt.OrasPull(artifactRoot, settings); err != nil {
-			return err
-		}
-	} else {
-		log.Info("Artifact root already exists, no need to re-create!")
-	}
-	return nil
-}
-
 // Pull the oras container to the plugin data directory
 // Derived from https://github.com/sajayantony/csi-driver-host-path/blob/1bcc9d435d0c3ccd93fa1855e8669aad0f3bd1b5/pkg/oci/oci.go
 // We are working on this plugin together
 func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) error {
-
-	// Get rid of oras prefix, if provided
-	log.Infof("Found ORAS reference: %s:%s", settings.reference, settings.tag)
-
-	// 0. Create a file store
-	artifactRoot, err := utils.GetFullPath(artifactRoot)
+	// 0. caching the remote repository with OCI layout as proxy
+	log.Infof("Remote repository %s will be proxied by %s", settings.rawReference, artifactRoot)
+	repo, err := remote.NewRepository(settings.rawReference)
 	if err != nil {
 		return err
 	}
-	log.Infof("Creating oras filestore at: %s", artifactRoot)
-	os.MkdirAll(artifactRoot, os.ModePerm)
-
-	// Create the new local filestore
-	fs, err := file.New(artifactRoot)
-	if err != nil {
-		return err
-	}
-	defer fs.Close()
-
-	// 1. Connect to a remote repository
-	log.Infof("Preparing to pull from remote repository: %s", settings.reference)
-	ctx := context.Background()
-	repo, err := remote.NewRepository(settings.reference)
-	log.Infof("Plain http: %t", settings.optionsPlainHttp)
 	repo.PlainHTTP = settings.optionsPlainHttp
-	if err != nil {
-		return err
+
+	proxy := New(repo, mnt.ociStore)
+	blobs := New(repo.Blobs(), mnt.ociStore) //FIXME: just to accomodate the current implementation, can be replaced by oras.Copy if blob pull can be inlined
+
+	// 1. resolve manifest descriptor
+	var desc ocispec.Descriptor
+	ctx := context.Background()
+	if found, ok := mnt.manifests.Load(settings.rawReference); ok {
+		log.Infof("Manifest cached for %s", settings.rawReference)
+		desc = found.(ocispec.Descriptor)
+	} else {
+		// todo: uri-based request caching
+		log.Infof("Resolving manifest descriptor for %s", settings.rawReference)
+		desc, err = oras.Resolve(ctx, proxy, settings.rawReference, oras.DefaultResolveOptions)
+		if err != nil {
+			return err
+		}
+		// todo: cache entry expiration
+		mnt.manifests.Store(settings.rawReference, desc)
 	}
 
-	// Fetch manifest for tag
-	desc, readCloser, err := repo.FetchReference(ctx, settings.tag)
+	// 2. fetch manifest
+	log.Printf("Fetching manifest %s", utils.DescToString(desc))
+	readCloser, err := proxy.Fetch(ctx, desc)
 	if err != nil {
 		return err
 	}
 	defer readCloser.Close()
 
 	// Read the pulled content
-	log.Printf("Found digest: %s for %s", desc.Digest.String(), settings.tag)
 	content, err := content.ReadAll(readCloser, desc)
 	if err != nil {
 		return err
@@ -183,7 +175,7 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 		return fmt.Errorf("found unknown media type %s", desc.MediaType)
 	}
 
-	var manifest oci.Manifest
+	var manifest ocispec.Manifest
 	err = json.Unmarshal(content, &manifest)
 	if err != nil {
 		return err
@@ -193,7 +185,7 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 	total := len(manifest.Layers)
 	extractCount := 0
 	for i, layer := range manifest.Layers {
-		log.Infof("Pulling %s, %d of %d", layer.Digest, i, total)
+		log.Infof("Pulling %s, %d of %d", layer.Digest, i+1, total)
 		filename, found := layer.Annotations["org.opencontainers.image.title"]
 
 		// This shouldn't happen, but you never know!
@@ -216,7 +208,7 @@ func (mnt *OrasHandler) OrasPull(artifactRoot string, settings orasSettings) err
 		}
 
 		// TODO could have a "pull if different size" or similar here
-		err = pullBlob(repo, layer.Digest.String(), fullPath)
+		err = pullBlob(ctx, blobs, layer, fullPath)
 		if err != nil {
 			return err
 		}
@@ -294,7 +286,7 @@ func (mnt *OrasHandler) OrasPathToVolume(settings orasSettings) (string, error) 
 	}
 
 	// Pull (or ensure artifact already exists)
-	err := mnt.ensureArtifact(artifactRoot, settings)
+	err := mnt.OrasPull(artifactRoot, settings)
 	if err != nil {
 		return "", err
 	}

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math/rand"
 
+	handler "github.com/billy-playground/oras-csi/pkg/oras"
 	"github.com/container-storage-interface/spec/lib/go/csi"
-	handler "github.com/converged-computing/oras-csi/pkg/oras"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -56,7 +56,11 @@ func NewNodeService(rootPath, pluginDataPath, nodeId string, handlersCount int, 
 	// Create N handlers per node
 	handlers := make([]*handler.OrasHandler, handlersCount)
 	for i := 0; i < handlersCount; i++ {
-		handlers[i] = handler.NewOrasHandler(rootPath, pluginDataPath, enforceNamespaces, nodeId, i, handlersCount)
+		h, err := handler.NewOrasHandler(rootPath, pluginDataPath, enforceNamespaces, nodeId, i, handlersCount)
+		if err != nil {
+			return nil, err
+		}
+		handlers[i] = h
 	}
 	if OrasLog {
 		handlers[0].SetOrasLogging()
