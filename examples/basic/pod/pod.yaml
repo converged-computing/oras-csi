@@ -2,6 +2,8 @@ kind: Pod
 apiVersion: v1
 metadata:
   name: my-csi-app-inline
+  labels:
+    job-name: oras-test
 spec:
   containers:
     - name: my-container

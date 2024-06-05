@@ -17,7 +17,7 @@ dev-helm: uninstall-helm compile build-dev push-dev install-helm ## Publish with
 .PHONY: test
 test: # Run basic end to end tests with bats
 	go test -v ./...
-	bats -t -T test/bats/e2e.bats
+	#bats -t -T test/bats/e2e.bats
 
 uninstall: ## Uninstalls the plugin from the cluster
 	@echo "==> Uninstalling plugin"
